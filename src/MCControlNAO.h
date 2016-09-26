@@ -11,6 +11,8 @@
 
 #include <Eigen/Core>
 
+#include "MCControlNAOServices.h"
+
 namespace AL
 {
 class ALMotionProxy;
@@ -18,35 +20,23 @@ class ALMotionProxy;
 
 namespace mc_nao
 {
-
 class MCControlNAO
 {
-public:
-  MCControlNAO(const std::string & host, mc_control::MCGlobalController & controller, const mc_control::Configuration&);
+ public:
+  MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller, const mc_control::Configuration&);
   virtual ~MCControlNAO();
 
-  int initialize();
-
-  // template<class Tsensor, class Tcontrol>
-  // void start();
-
-  // template<class Tsensor>
-  // void sensorCallback(const Tsensor & data);
-
-  // template<class Tcontrol>
-  // void controlCallback(WriteAndAck<Tcontrol> & proto, Tcontrol & data);
-
   bool running();
-
   void stop();
 
-  mc_control::MCGlobalController & controller();
+  mc_control::MCGlobalController& controller();
 
-private:
+ private:
   void control_thread();
 
-private:
-  mc_control::MCGlobalController & m_controller;
+ private:
+  mc_control::MCGlobalController& m_controller;
+  MCControlNAOService m_service;
   std::vector<std::string> deactivatedJoints;
   std::vector<std::string> activeJoints;
 
@@ -85,4 +75,3 @@ private:
   std::thread control_th;
 };
 } /* mc_nao */
-
