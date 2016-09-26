@@ -12,7 +12,7 @@
 
 namespace mc_nao
 {
-MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller) : m_controller(controller),
+MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller, const mc_control::Configuration& config) : m_controller(controller),
                                                                                                   // m_service(this->m_controller),
                                                                                                   m_timeStep(1000 * ceil(static_cast<unsigned int>(controller.timestep()))),
                                                                                                   m_running(true),
@@ -23,6 +23,29 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
                                                                                                   strPortSensor("4002"),
                                                                                                   strPortControl("4003")
 {
+
+
+  if(config.isMember("Deactivated"))
+  {
+    std::string robot_name = m_controller.robot().name();
+    deactivatedJoints = config("Deactivated");
+  }
+
+  LOG_INFO ("Deactivated joints: ");
+  for(const auto& j : deactivatedJoints)
+  {
+    LOG_INFO(j);
+  }
+
+  const auto& ref_joint_order = m_controller.ref_joint_order();
+  for (const auto& j : ref_joint_order)
+  {
+    if (std::find(deactivatedJoints.begin(), deactivatedJoints.end(), j) == std::end(deactivatedJoints))
+    {
+      activeJoints.push_back(j);
+    }
+  }
+
   LOG_INFO("MCControlNAO: Connecting to " << host << ":" << 9559);
   al_motion = std::unique_ptr<AL::ALMotionProxy>(new AL::ALMotionProxy(host, 9559));
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
@@ -35,59 +58,6 @@ MCControlNAO::~MCControlNAO()
 
 void MCControlNAO::control_thread()
 {
-  std::vector<std::string> deactivated_joints =
-      {
-          // "HeadYaw",
-          // "HeadPitch",
-          // "LHipYawPitch",
-          // "LHipRoll",
-          // "LHipPitch",
-          // "LKneePitch",
-          // "LAnklePitch",
-          // "LAnkleRoll",
-          // "RHipYawPitch",
-          // "RHipRoll",
-          // "RHipPitch",
-          // "RKneePitch",
-          // "RAnklePitch",
-          // "RAnkleRoll",
-          // "LShoulderPitch",
-          // "LShoulderRoll",
-          // "LElbowYaw",
-          // "LElbowRoll",
-          // "LWristYaw",
-          // "RShoulderPitch",
-          // "RShoulderRoll",
-          // "RElbowYaw",
-          // "RElbowRoll",
-          // "RWristYaw",
-          "LHand",
-          "RHand",
-          "RFinger23",
-          "RFinger13",
-          "RFinger12",
-          "LFinger21",
-          "LFinger13",
-          "LFinger11",
-          "RFinger22",
-          "LFinger22",
-          "RFinger21",
-          "LFinger12",
-          "RFinger11",
-          "LFinger23",
-          "LThumb1",
-          "RThumb1",
-          "RThumb2",
-          "LThumb2"};
-  std::vector<std::string> active_joints;
-  const auto& ref_joint_order = m_controller.ref_joint_order();
-  for (const auto& j : ref_joint_order)
-  {
-    if (std::find(deactivated_joints.begin(), deactivated_joints.end(), j) == std::end(deactivated_joints))
-    {
-      active_joints.push_back(j);
-    }
-  }
 
   while (m_running)
   {
@@ -105,18 +75,18 @@ void MCControlNAO::control_thread()
       double t = 0.;  //in nano second
       const mc_control::QPResultMsg& res = m_controller.send(t);
 
-      AL::ALValue names(active_joints);
+      AL::ALValue names(activeJoints);
       //"HeadYaw", "HeadPitch");
-      std::vector<float> joint_angles(active_joints.size(), 0.);
-      for (unsigned int i = 0; i < active_joints.size(); ++i)
+      std::vector<float> joint_angles(activeJoints.size(), 0.);
+      for (unsigned int i = 0; i < activeJoints.size(); ++i)
       {
-        joint_angles[i] = res.robots_state[0].q.at(active_joints[i])[0];
-        // std::cout << "Would go to " << active_joints[i] << ": " << joint_angles[i]  << std::endl;
+        joint_angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
+        // std::cout << "Would go to " << activeJoints[i] << ": " << joint_angles[i]  << std::endl;
       }
 
       AL::ALValue angles(joint_angles);
-      AL::ALValue joint_stiffness(std::vector<float>(active_joints.size(), 1));
-      AL::ALValue joint_zero_stiffness(std::vector<float>(active_joints.size(), 0.));
+      AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
+      AL::ALValue joint_zero_stiffness(std::vector<float>(activeJoints.size(), 0.));
       // LOG_INFO("Joint Names: " << names);
       // LOG_INFO("Joint angles: " << angles);
       // LOG_INFO("Joint stiffness: " << joint_stiffness);
@@ -124,11 +94,9 @@ void MCControlNAO::control_thread()
       float fractionMaxSpeed = 0.1f;
       try
       {
-        al_motion->setStiffnesses(names, 1.);
-        // qi::os::sleep(1.0f);
+        // al_motion->setStiffnesses(names, 1.);
         // Uncomment for doom
-        al_motion->setAngles(names, angles, fractionMaxSpeed);
-        // qi::os::sleep(2.0f);
+        // al_motion->setAngles(names, angles, fractionMaxSpeed);
         // al_motion->setStiffnesses(names, joint_zero_stiffness);
       }
       catch (const AL::ALError& e)

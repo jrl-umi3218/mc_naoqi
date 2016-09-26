@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  mc_nao::MCControlNAO mc_control_nao(host, controller);
+  mc_nao::MCControlNAO mc_control_nao(host, controller, mc_control::Configuration(conf_file));
 
   return 0;
 }

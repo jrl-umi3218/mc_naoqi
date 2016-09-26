@@ -22,7 +22,7 @@ namespace mc_nao
 class MCControlNAO
 {
 public:
-  MCControlNAO(const std::string & host, mc_control::MCGlobalController & controller);
+  MCControlNAO(const std::string & host, mc_control::MCGlobalController & controller, const mc_control::Configuration&);
   virtual ~MCControlNAO();
 
   int initialize();
@@ -47,6 +47,9 @@ private:
 
 private:
   mc_control::MCGlobalController & m_controller;
+  std::vector<std::string> deactivatedJoints;
+  std::vector<std::string> activeJoints;
+
   // MCControlNAOService m_service;
   /*! Timestep expressed in ms */
   unsigned int m_timeStep;
