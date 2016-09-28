@@ -11,6 +11,7 @@ include(cmake/eigen.cmake)
 include(cmake/pkg-config.cmake)
 include(cmake/eigen.cmake)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CXX_DISABLE_WERROR 1)
 
 set(DOXYGEN_USE_MATHJAX "YES")

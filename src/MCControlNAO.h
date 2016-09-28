@@ -16,6 +16,7 @@
 namespace AL
 {
 class ALMotionProxy;
+class ALMemoryProxy;
 }
 
 namespace mc_nao
@@ -33,6 +34,7 @@ class MCControlNAO
 
  private:
   void control_thread();
+  void handleSensors();
 
  private:
   mc_control::MCGlobalController& m_controller;
@@ -67,11 +69,15 @@ class MCControlNAO
   /*! Connection host */
   std::string host;
   /*! Remote port for sensor connection */
-  std::string strPortSensor;
+  unsigned int portSensor;
   /*! Remote port for control connection */
-  std::string strPortControl;
+  unsigned int portControl;
 
+  /*! Gives high level access to actuators */
   std::unique_ptr<AL::ALMotionProxy> al_motion;
+  /*! Gives access to nao memory (read force sensors...) */
+  std::unique_ptr<AL::ALMemoryProxy> al_memory;
   std::thread control_th;
+  std::thread sensor_th;
 };
 } /* mc_nao */
