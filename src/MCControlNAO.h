@@ -29,6 +29,7 @@ class MCControlNAO
 
   bool running();
   void stop();
+  void servo(const bool state);
 
   mc_control::MCGlobalController& controller();
 
@@ -46,6 +47,8 @@ class MCControlNAO
   /*! Timestep expressed in ms */
   unsigned int m_timeStep;
   bool m_running = true;
+  /*! Servo on/off (joint stiffness 0 if off) */
+  bool m_servo = true;
   bool init;
   /* Sensor information */
   /*! Encoder values */

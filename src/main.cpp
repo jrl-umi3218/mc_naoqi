@@ -121,6 +121,14 @@ void input_thread(MCControlNAO & controlNAO)
       LOG_INFO("Stopping experiment")
       controlNAO.stop();
     }
+    else if(token == "servooff")
+    {
+      controlNAO.servo(false);
+    }
+    else if(token == "servoon")
+    {
+      controlNAO.servo(true);
+    }
     else if(cli_fn.count(token))
     {
       std::string rem;

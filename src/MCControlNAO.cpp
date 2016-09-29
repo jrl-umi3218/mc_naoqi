@@ -96,13 +96,18 @@ void MCControlNAO::control_thread()
         float fractionMaxSpeed = 0.5f;
         try
         {
-          // Uncomment for doom
-          al_motion->setStiffnesses(names, joint_stiffness);
-          // XXX consider using the fast version
-          // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
-          al_motion->setAngles(names, angles, fractionMaxSpeed);
-
-          // al_motion->setStiffnesses(names, joint_zero_stiffness);
+          if(m_servo)
+          {
+            // Uncomment for doom
+            al_motion->setStiffnesses(names, joint_stiffness);
+            // XXX consider using the fast version
+            // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
+            al_motion->setAngles(names, angles, fractionMaxSpeed);
+          }
+          else
+          {
+            al_motion->setStiffnesses(names, joint_zero_stiffness);
+          }
         }
         catch (const AL::ALError& e)
         {
@@ -178,6 +183,7 @@ void MCControlNAO::handleSensors()
   }
 };
 
+void MCControlNAO::servo(const bool state) { m_servo = state; }
 bool MCControlNAO::running() { return m_running; }
 void MCControlNAO::stop() { m_running = false; }
 mc_control::MCGlobalController& MCControlNAO::controller() { return m_controller; }
