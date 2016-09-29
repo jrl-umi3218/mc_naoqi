@@ -11,7 +11,11 @@
 
 #include <Eigen/Core>
 
+#include "NAOModule.h"
 #include "MCControlNAOServices.h"
+
+#include <alcommon/almodule.h>
+#include <alcommon/albroker.h>
 
 namespace AL
 {
@@ -19,8 +23,10 @@ class ALMotionProxy;
 class ALMemoryProxy;
 }
 
+
 namespace mc_nao
 {
+
 class MCControlNAO
 {
  public:
@@ -48,7 +54,7 @@ class MCControlNAO
   unsigned int m_timeStep;
   bool m_running = true;
   /*! Servo on/off (joint stiffness 0 if off) */
-  bool m_servo = true;
+  bool m_servo = false;
   bool init;
   /* Sensor information */
   /*! Encoder values */
@@ -76,6 +82,9 @@ class MCControlNAO
   /*! Remote port for control connection */
   unsigned int portControl;
 
+  /* Handles communication with NAO */
+  boost::shared_ptr<AL::ALBroker> al_broker;
+  boost::shared_ptr<NAOModule> nao_module;
   /*! Gives high level access to actuators */
   std::unique_ptr<AL::ALMotionProxy> al_motion;
   /*! Gives access to nao memory (read force sensors...) */

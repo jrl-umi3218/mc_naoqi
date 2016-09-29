@@ -13,6 +13,7 @@
 
 namespace mc_nao
 {
+
 MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller,
                            const mc_control::Configuration& config)
     : m_controller(controller),
@@ -49,11 +50,35 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
     }
   }
 
-  LOG_INFO("MCControlNAO: Connecting to " << host << ":" << 9559);
-  al_motion = std::unique_ptr<AL::ALMotionProxy>(new AL::ALMotionProxy(host, portControl));
-  al_memory = std::unique_ptr<AL::ALMemoryProxy>(new AL::ALMemoryProxy(host, portSensor));
+  LOG_INFO("MCControlNAO: Connecting to " << host << ":" << portControl);
+
+  al_broker = AL::ALBroker::createBroker("MCControlNAOBroker", "0.0.0.0", 54000, host, portControl);
+  try {
+  al_broker->createBroker("MCControlNAOBroker", "0.0.0.0", 0, host, portControl);
+  } catch(...)
+  {
+    LOG_ERROR("Failed to create broker");
+  }
+
+  nao_module = AL::ALModule::createModule<NAOModule>(al_broker, "MCNAOModule");
+  nao_module->setController(this);
+
+  al_motion = std::unique_ptr<AL::ALMotionProxy>(new AL::ALMotionProxy(al_broker));
+  al_memory = std::unique_ptr<AL::ALMemoryProxy>(new AL::ALMemoryProxy(al_broker));
+  al_memory->subscribeToEvent("robotIsFalling",
+            "MCNAOModule",
+            "onRobotFalling");
+  al_memory->subscribeToEvent("robotHasFallen",
+            "MCNAOModule",
+            "onRobotFalling");
+  al_memory->subscribeToEvent("RightBumperPressed",
+            "MCNAOModule",
+            "onRightBumperPressed");
+
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
+
+  // FIXME: disable some of the interferring embeded nao safeties (collision avoidance...)
 }
 
 MCControlNAO::~MCControlNAO() { control_th.join(); }
