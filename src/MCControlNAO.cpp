@@ -89,7 +89,7 @@ void MCControlNAO::control_thread()
     // LOG_INFO("Running controller");
     auto start = std::chrono::high_resolution_clock::now();
 
-    if (m_controller.running)
+    if (m_controller.running && init)
     {
       /**
        * CONTROL stuff goes here
@@ -150,6 +150,7 @@ void MCControlNAO::control_thread()
             .count();
     std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - elapsed));
   }
+  LOG_INFO("MCControlNAO running thread stopped");
 }
 
 void MCControlNAO::handleSensors()
@@ -198,6 +199,13 @@ void MCControlNAO::handleSensors()
       }
     }
 
+    if(!init)
+    {
+      LOG_INFO("Init controller");
+      m_controller.init(qIn);
+      init = true;
+    }
+
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);
@@ -210,6 +218,6 @@ void MCControlNAO::handleSensors()
 
 void MCControlNAO::servo(const bool state) { m_servo = state; }
 bool MCControlNAO::running() { return m_running; }
-void MCControlNAO::stop() { m_running = false; }
+void MCControlNAO::stop() { m_controller.running = false; m_running = false; LOG_INFO("Controller Stopped"); }
 mc_control::MCGlobalController& MCControlNAO::controller() { return m_controller; }
 } /* mc_nao */

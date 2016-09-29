@@ -55,7 +55,7 @@ class MCControlNAO
   bool m_running = true;
   /*! Servo on/off (joint stiffness 0 if off) */
   bool m_servo = false;
-  bool init;
+  bool init = false;
   /* Sensor information */
   /*! Encoder values */
   std::vector<double> qIn;

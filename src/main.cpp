@@ -78,6 +78,13 @@ namespace
     return controller.GoToHalfSitPose_service();
   }
 
+  bool ChangeController(mc_control::MCGlobalController & controller, std::stringstream &args)
+  {
+    std::string name;
+    args >> name;
+    return controller.EnableController(name);
+  }
+
   bool send_msg(mc_control::MCGlobalController & controller, std::stringstream & args)
   {
     return controller.send_msg(args.str());
@@ -99,7 +106,8 @@ namespace
     {"set_gripper", std::bind(&set_gripper, std::placeholders::_1, std::placeholders::_2)},
     {"move_com", std::bind(&move_com, std::placeholders::_1, std::placeholders::_2)},
     {"play_next_stance", std::bind(&play_next_stance, std::placeholders::_1, std::placeholders::_2)},
-    {"GoToHalfSitPose", std::bind(&GoToHalfSitPose, std::placeholders::_1, std::placeholders::_2)},
+    {"hs", std::bind(&GoToHalfSitPose, std::placeholders::_1, std::placeholders::_2)},
+    {"cc", std::bind(&ChangeController, std::placeholders::_1, std::placeholders::_2)},
     {"send_msg", std::bind(&send_msg, std::placeholders::_1, std::placeholders::_2)},
     {"send_recv_msg", std::bind(&send_recv_msg, std::placeholders::_1, std::placeholders::_2)}
   };
@@ -121,11 +129,11 @@ void input_thread(MCControlNAO & controlNAO)
       LOG_INFO("Stopping experiment")
       controlNAO.stop();
     }
-    else if(token == "servooff")
+    else if(token == "off")
     {
       controlNAO.servo(false);
     }
-    else if(token == "servoon")
+    else if(token == "on")
     {
       controlNAO.servo(true);
     }
