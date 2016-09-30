@@ -34,6 +34,7 @@ class MCControlNAO
   virtual ~MCControlNAO();
 
   bool running();
+  void start();
   void stop();
   void servo(const bool state);
 

@@ -137,6 +137,10 @@ void input_thread(MCControlNAO & controlNAO)
     {
       controlNAO.servo(true);
     }
+    else if(token == "start")
+    {
+      controlNAO.start();
+    }
     else if(cli_fn.count(token))
     {
       std::string rem;

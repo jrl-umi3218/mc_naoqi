@@ -51,6 +51,10 @@ NAOModule::NAOModule(boost::shared_ptr<AL::ALBroker> broker, const std::string &
   //addParam("word", "The word to be print.");
   BIND_METHOD(NAOModule::onRobotFalling);
 
+  functionName("onRobotHasFallen", getName(), "Handles what to do when NAO has fallen.");
+  //addParam("word", "The word to be print.");
+  BIND_METHOD(NAOModule::onRobotHasFallen);
+
   /**
    * onRightBumperPressed
    **/
@@ -100,13 +104,21 @@ bool NAOModule::returnTrue()
   return true;
 }
 
-void NAOModule::onRobotFalling()
+void NAOModule::onRobotHasFallen()
 {
   LOG_WARNING("Robot is falling, stopping controller");
   if(m_controller) {
     m_controller->stop();
   } else {
     LOG_ERROR("NO Controller to stop");
+  }
+}
+
+void NAOModule::onRobotFalling()
+{
+  if(m_controller)
+  {
+    m_controller->servo(false);
   }
 }
 

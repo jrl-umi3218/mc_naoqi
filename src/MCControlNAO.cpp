@@ -13,7 +13,6 @@
 
 namespace mc_nao
 {
-
 MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller,
                            const mc_control::Configuration& config)
     : m_controller(controller),
@@ -53,9 +52,11 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   LOG_INFO("MCControlNAO: Connecting to " << host << ":" << portControl);
 
   al_broker = AL::ALBroker::createBroker("MCControlNAOBroker", "0.0.0.0", 54000, host, portControl);
-  try {
-  al_broker->createBroker("MCControlNAOBroker", "0.0.0.0", 0, host, portControl);
-  } catch(...)
+  try
+  {
+    al_broker->createBroker("MCControlNAOBroker", "0.0.0.0", 0, host, portControl);
+  }
+  catch (...)
   {
     LOG_ERROR("Failed to create broker");
   }
@@ -65,15 +66,9 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
 
   al_motion = std::unique_ptr<AL::ALMotionProxy>(new AL::ALMotionProxy(al_broker));
   al_memory = std::unique_ptr<AL::ALMemoryProxy>(new AL::ALMemoryProxy(al_broker));
-  al_memory->subscribeToEvent("robotIsFalling",
-            "MCNAOModule",
-            "onRobotFalling");
-  al_memory->subscribeToEvent("robotHasFallen",
-            "MCNAOModule",
-            "onRobotFalling");
-  al_memory->subscribeToEvent("RightBumperPressed",
-            "MCNAOModule",
-            "onRightBumperPressed");
+  al_memory->subscribeToEvent("robotIsFalling", "MCNAOModule", "onRobotFalling");
+  al_memory->subscribeToEvent("robotHasFallen", "MCNAOModule", "onRobotHasFallen");
+  al_memory->subscribeToEvent("RightBumperPressed", "MCNAOModule", "onRightBumperPressed");
 
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
@@ -89,6 +84,19 @@ void MCControlNAO::control_thread()
     // LOG_INFO("Running controller");
     auto start = std::chrono::high_resolution_clock::now();
 
+    AL::ALValue names(activeJoints);
+    AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
+    AL::ALValue joint_zero_stiffness(std::vector<float>(activeJoints.size(), 0.));
+    if (m_servo)
+    {
+      // Uncomment for doom
+      al_motion->setStiffnesses(names, joint_stiffness);
+    }
+    else
+    {
+      al_motion->setStiffnesses(names, joint_zero_stiffness);
+    }
+
     if (m_controller.running && init)
     {
       /**
@@ -102,8 +110,6 @@ void MCControlNAO::control_thread()
         double t = 0.;  // in nano second
         const mc_control::QPResultMsg& res = m_controller.send(t);
 
-        AL::ALValue names(activeJoints);
-        //"HeadYaw", "HeadPitch");
         std::vector<float> joint_angles(activeJoints.size(), 0.);
         for (unsigned int i = 0; i < activeJoints.size(); ++i)
         {
@@ -112,8 +118,6 @@ void MCControlNAO::control_thread()
         }
 
         AL::ALValue angles(joint_angles);
-        AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
-        AL::ALValue joint_zero_stiffness(std::vector<float>(activeJoints.size(), 0.));
         // LOG_INFO("Joint Names: " << names);
         // LOG_INFO("Joint angles: " << angles);
         // LOG_INFO("Joint stiffness: " << joint_stiffness);
@@ -121,18 +125,12 @@ void MCControlNAO::control_thread()
         float fractionMaxSpeed = 0.5f;
         try
         {
-          if(m_servo)
-          {
-            // Uncomment for doom
-            al_motion->setStiffnesses(names, joint_stiffness);
-            // XXX consider using the fast version
-            // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
-            al_motion->setAngles(names, angles, fractionMaxSpeed);
-          }
-          else
-          {
-            al_motion->setStiffnesses(names, joint_zero_stiffness);
-          }
+          // XXX consider using the fast version
+          // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
+          al_motion->setAngles(names, angles, fractionMaxSpeed);
+
+          // Move at max_speed percent of joint max velocity
+          // al_motion->angleInterpolationWithSpeed(names, angles, 1);
         }
         catch (const AL::ALError& e)
         {
@@ -199,13 +197,6 @@ void MCControlNAO::handleSensors()
       }
     }
 
-    if(!init)
-    {
-      LOG_INFO("Init controller");
-      m_controller.init(qIn);
-      init = true;
-    }
-
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);
@@ -218,6 +209,19 @@ void MCControlNAO::handleSensors()
 
 void MCControlNAO::servo(const bool state) { m_servo = state; }
 bool MCControlNAO::running() { return m_running; }
-void MCControlNAO::stop() { m_controller.running = false; m_running = false; LOG_INFO("Controller Stopped"); }
+void MCControlNAO::start()
+{
+    if (!init)
+    {
+      LOG_INFO("Init controller");
+      m_controller.init(qIn);
+      init = true;
+    }
+}
+void MCControlNAO::stop()
+{
+  m_controller.running = false;
+  LOG_INFO("Controller Stopped");
+}
 mc_control::MCGlobalController& MCControlNAO::controller() { return m_controller; }
 } /* mc_nao */
