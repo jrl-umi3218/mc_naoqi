@@ -74,6 +74,12 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
 
   // FIXME: disable some of the interferring embeded nao safeties (collision avoidance...)
+
+  // Disable whole body balancer
+  al_motion->wbEnable(false);
+
+  // Disable self-collision checks
+  al_motion->setCollisionProtectionEnabled("Arms", false);
 }
 
 MCControlNAO::~MCControlNAO() { control_th.join(); }
@@ -122,7 +128,7 @@ void MCControlNAO::control_thread()
         // LOG_INFO("Joint angles: " << angles);
         // LOG_INFO("Joint stiffness: " << joint_stiffness);
 
-        float fractionMaxSpeed = 0.5f;
+        float fractionMaxSpeed = 1.f;
         try
         {
           // XXX consider using the fast version

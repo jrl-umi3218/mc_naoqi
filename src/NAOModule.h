@@ -41,6 +41,7 @@ public:
   void printWord(const std::string &word);
 
   void onRobotFalling();
+  void onRobotHasFallen();
   void onRightBumperPressed();
 
   // Function which returns true
