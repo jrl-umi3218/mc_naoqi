@@ -42,6 +42,7 @@ class MCControlNAO
   mc_control::MCGlobalController& controller();
 
  private:
+  void control_loop();
   void control_thread();
   void handleSensors();
 
@@ -94,5 +95,6 @@ class MCControlNAO
   std::unique_ptr<AL::ALMemoryProxy> al_memory;
   std::thread control_th;
   std::thread sensor_th;
+
 };
 } /* mc_nao */

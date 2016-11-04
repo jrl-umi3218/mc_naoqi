@@ -20,7 +20,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
 
       m_service(this->m_controller),
       // m_service(this->m_controller),
-      m_timeStep(1000 * ceil(static_cast<unsigned int>(controller.timestep()))),
+      m_timeStep(1000 * controller.timestep()),
       m_running(true),
       init(false),
       m_wrenchesNames(controller.robot().forceSensorsByName()),
@@ -29,6 +29,8 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
       portSensor(9559),
       portControl(9559)
 {
+  LOG_INFO("timestep : " << controller.timestep());
+  LOG_INFO("m_timeStep : " << m_timeStep);
   if (config.isMember("Deactivated"))
   {
     std::string robot_name = m_controller.robot().name();
@@ -73,13 +75,9 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   al_memory->subscribeToEvent("robotHasFallen", "MCNAOModule", "onRobotHasFallen");
   al_memory->subscribeToEvent("RightBumperPressed", "MCNAOModule", "onRightBumperPressed");
 
-  control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
-  sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
-
-
   // Example showing how to get the robot config
   AL::ALValue robotConfig = al_motion->getRobotConfig();
-  for (unsigned int i=0; i<robotConfig[0].getSize(); i++)
+  for (unsigned int i = 0; i < robotConfig[0].getSize(); i++)
   {
     std::cout << robotConfig[0][i] << ": " << robotConfig[1][i] << std::endl;
   }
@@ -95,28 +93,21 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
 
   // Disable self-collision checks
   al_motion->setCollisionProtectionEnabled("Arms", false);
+
+  control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
+  sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
 }
 
 MCControlNAO::~MCControlNAO() { control_th.join(); }
 void MCControlNAO::control_thread()
 {
+  AL::ALValue names(activeJoints);
+  AL::ALValue angles = AL::ALValue::array(0);
+  angles.arraySetSize(activeJoints.size());
+
   while (m_running)
   {
-    // LOG_INFO("Running controller");
     auto start = std::chrono::high_resolution_clock::now();
-
-    AL::ALValue names(activeJoints);
-    AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
-    AL::ALValue joint_zero_stiffness(std::vector<float>(activeJoints.size(), 0.));
-    if (m_servo)
-    {
-      // Uncomment for doom
-      al_motion->setStiffnesses(names, joint_stiffness);
-    }
-    else
-    {
-      al_motion->setStiffnesses(names, joint_zero_stiffness);
-    }
 
     if (m_controller.running && init)
     {
@@ -131,49 +122,50 @@ void MCControlNAO::control_thread()
         double t = 0.;  // in nano second
         const mc_control::QPResultMsg& res = m_controller.send(t);
 
-        std::vector<float> joint_angles(activeJoints.size(), 0.);
         for (unsigned int i = 0; i < activeJoints.size(); ++i)
         {
-          joint_angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
-          // std::cout << "Would go to " << activeJoints[i] << ": " << joint_angles[i]  << std::endl;
+          angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
         }
 
-        AL::ALValue angles(joint_angles);
-        // LOG_INFO("Joint Names: " << names);
-        // LOG_INFO("Joint angles: " << angles);
-        // LOG_INFO("Joint stiffness: " << joint_stiffness);
+        // XXX consider using the fast version
+        // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
+        // float fractionMaxSpeed = 1.f;
+        // try
+        // {
+        //   al_motion->setAngles(names, angles, fractionMaxSpeed);
 
-        float fractionMaxSpeed = 1.f;
-        try
-        {
-          // XXX consider using the fast version
-          // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
-          al_motion->setAngles(names, angles, fractionMaxSpeed);
-
-          // Move at max_speed percent of joint max velocity
-          // al_motion->angleInterpolationWithSpeed(names, angles, 1);
-        }
-        catch (const AL::ALError& e)
-        {
-          qiLogError("module.MCControlNAO") << "Error with command: " << e.what() << std::endl;
-        }
-        catch (...)
-        {
-          LOG_ERROR("Error communicating command to the robot");
-        }
+        //   // Move at max_speed percent of joint max velocity
+        //   // al_motion->angleInterpolationWithSpeed(names, angles, 1);
+        // }
+        // catch (const AL::ALError& e)
+        // {
+        //   qiLogError("module.MCControlNAO") << "Error with command: " << e.what() << std::endl;
+        // }
+        // catch (...)
+        // {
+        //   LOG_ERROR("Error communicating command to the robot");
+        // }
       }
     }
 
-    auto elapsed =
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start)
-            .count();
-    std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - elapsed));
+    double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+    if (elapsed * 1000 > m_timeStep)
+    {
+      LOG_WARNING("Loop time " << elapsed * 1000 << " exeeded timestep of " << m_timeStep << " ms");
+    }
+    else
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
+    }
   }
   LOG_INFO("MCControlNAO running thread stopped");
 }
 
 void MCControlNAO::handleSensors()
 {
+  // XXX: Sensor thread currently runs at about 50-60ms
+  // Should be made faster
+
   while (m_running)
   {
     auto start = std::chrono::high_resolution_clock::now();
@@ -202,6 +194,8 @@ void MCControlNAO::handleSensors()
     // LOG_INFO("Gyrometer: " << rateIn);
 
     // Get encoder values
+    // XXX consider using the fast version
+    // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
     qIn.resize(m_controller.robot().mb().nrDof());
     const auto& ref_joint_order = m_controller.ref_joint_order();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
@@ -221,24 +215,50 @@ void MCControlNAO::handleSensors()
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);
-    auto elapsed =
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start)
+    double elapsed =
+        std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start)
             .count();
-    std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - elapsed));
+    if(elapsed * 1000 > m_timeStep)
+    {
+      LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << m_timeStep << " ms");
+    }
+    else
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
+    }
   }
 };
 
-void MCControlNAO::servo(const bool state) { m_servo = state; }
+void MCControlNAO::servo(const bool state)
+{
+  m_servo = state;
+
+  AL::ALValue names(activeJoints);
+
+  // XXX sets stiffness to max
+  if (m_servo)
+  {
+    AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
+    // Uncomment for doom
+    al_motion->setStiffnesses(names, joint_stiffness);
+  }
+  else
+  {
+    AL::ALValue joint_zero_stiffness(std::vector<float>(activeJoints.size(), 0.));
+    al_motion->setStiffnesses(names, joint_zero_stiffness);
+  }
+}
+
 bool MCControlNAO::running() { return m_running; }
 void MCControlNAO::start()
 {
-    if (!init)
-    {
-      LOG_INFO("Init controller");
-      m_controller.init(qIn);
-      init = true;
-    }
-    m_controller.running = true;
+  if (!init)
+  {
+    LOG_INFO("Init controller");
+    m_controller.init(qIn);
+    init = true;
+  }
+  m_controller.running = true;
 }
 void MCControlNAO::stop()
 {
