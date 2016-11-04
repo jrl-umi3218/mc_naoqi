@@ -21,6 +21,7 @@ namespace AL
 {
 class ALMotionProxy;
 class ALMemoryProxy;
+class ALPreferenceManagerProxy;
 }
 
 
@@ -88,6 +89,7 @@ class MCControlNAO
   boost::shared_ptr<NAOModule> nao_module;
   /*! Gives high level access to actuators */
   std::unique_ptr<AL::ALMotionProxy> al_motion;
+  std::unique_ptr<AL::ALPreferenceManagerProxy> al_preference;
   /*! Gives access to nao memory (read force sensors...) */
   std::unique_ptr<AL::ALMemoryProxy> al_memory;
   std::thread control_th;

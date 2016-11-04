@@ -3,6 +3,7 @@
 #include <alerror/alerror.h>
 #include <alproxies/almemoryproxy.h>
 #include <alproxies/almotionproxy.h>
+#include <alproxies/alpreferencemanagerproxy.h>
 
 // std
 #include <chrono>
@@ -65,6 +66,8 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   nao_module->setController(this);
 
   al_motion = std::unique_ptr<AL::ALMotionProxy>(new AL::ALMotionProxy(al_broker));
+  al_preference = std::unique_ptr<AL::ALPreferenceManagerProxy>(new AL::ALPreferenceManagerProxy(al_broker));
+
   al_memory = std::unique_ptr<AL::ALMemoryProxy>(new AL::ALMemoryProxy(al_broker));
   al_memory->subscribeToEvent("robotIsFalling", "MCNAOModule", "onRobotFalling");
   al_memory->subscribeToEvent("robotHasFallen", "MCNAOModule", "onRobotHasFallen");
@@ -73,10 +76,22 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
 
+
+  // Example showing how to get the robot config
+  AL::ALValue robotConfig = al_motion->getRobotConfig();
+  for (unsigned int i=0; i<robotConfig[0].getSize(); i++)
+  {
+    std::cout << robotConfig[0][i] << ": " << robotConfig[1][i] << std::endl;
+  }
+
   // FIXME: disable some of the interferring embeded nao safeties (collision avoidance...)
 
   // Disable whole body balancer
   al_motion->wbEnable(false);
+
+  // Disable fall manager
+  al_preference->setValue("MCNAOModule", "ENABLE_DEACTIVATION_OF_FALL_MANAGER", true);
+  al_motion->setFallManagerEnabled(false);
 
   // Disable self-collision checks
   al_motion->setCollisionProtectionEnabled("Arms", false);
@@ -223,6 +238,7 @@ void MCControlNAO::start()
       m_controller.init(qIn);
       init = true;
     }
+    m_controller.running = true;
 }
 void MCControlNAO::stop()
 {
