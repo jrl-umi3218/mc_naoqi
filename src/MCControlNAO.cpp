@@ -82,7 +82,11 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
     std::cout << robotConfig[0][i] << ": " << robotConfig[1][i] << std::endl;
   }
 
-  // FIXME: disable some of the interferring embeded nao safeties (collision avoidance...)
+  al_fastdcm = std::unique_ptr<AL::ALProxy>(new AL::ALProxy(al_broker, "FastGetSetDCM"));
+
+  //////////////
+  // Disable some of the interferring embeded nao safeties (collision avoidance...)
+  //////////////
 
   // Disable whole body balancer
   al_motion->wbEnable(false);
@@ -126,6 +130,10 @@ void MCControlNAO::control_thread()
         {
           angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
         }
+
+        // std::vector<std::string> joints = {"Device/SubDeviceList/HeadYaw/Position/Actuator/Value"};
+        // std::vector<float> values = {-0.5};
+        al_fastdcm->callVoid("setJointAngles", names, angles);
 
         // XXX consider using the fast version
         // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
@@ -215,10 +223,8 @@ void MCControlNAO::handleSensors()
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);
-    double elapsed =
-        std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start)
-            .count();
-    if(elapsed * 1000 > m_timeStep)
+    double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+    if (elapsed * 1000 > m_timeStep)
     {
       LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << m_timeStep << " ms");
     }
@@ -238,14 +244,16 @@ void MCControlNAO::servo(const bool state)
   // XXX sets stiffness to max
   if (m_servo)
   {
-    AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
-    // Uncomment for doom
-    al_motion->setStiffnesses(names, joint_stiffness);
+    al_fastdcm->callVoid("setStiffness", .5);
+    // AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
+    // // Uncomment for doom
+    // al_motion->setStiffnesses(names, joint_stiffness);
   }
   else
   {
-    AL::ALValue joint_zero_stiffness(std::vector<float>(activeJoints.size(), 0.));
-    al_motion->setStiffnesses(names, joint_zero_stiffness);
+    al_fastdcm->callVoid("setStiffness", 0.);
+    // AL::ALValue joint_zero_stiffness(std::vector<float>(activeJoints.size(), 0.));
+    // al_motion->setStiffnesses(names, joint_zero_stiffness);
   }
 }
 

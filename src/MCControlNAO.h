@@ -42,7 +42,6 @@ class MCControlNAO
   mc_control::MCGlobalController& controller();
 
  private:
-  void control_loop();
   void control_thread();
   void handleSensors();
 
@@ -93,6 +92,10 @@ class MCControlNAO
   std::unique_ptr<AL::ALPreferenceManagerProxy> al_preference;
   /*! Gives access to nao memory (read force sensors...) */
   std::unique_ptr<AL::ALMemoryProxy> al_memory;
+
+  /*! Custom DCM module for fast access to NAO memory */
+  std::unique_ptr<AL::ALProxy> al_fastdcm;
+
   std::thread control_th;
   std::thread sensor_th;
 
