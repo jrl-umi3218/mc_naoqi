@@ -84,6 +84,14 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
 
   al_fastdcm = std::unique_ptr<AL::ALProxy>(new AL::ALProxy(al_broker, "FastGetSetDCM"));
 
+  std::vector<std::string> sensorsOrder;
+  al_fastdcm->call<AL::ALValue>("getSensorsOrder").ToStringArray(sensorsOrder);
+  for (size_t i = 0; i < sensorsOrder.size(); i++)
+  {
+    LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
+    sensorOrderMap[sensorsOrder[i]] = i;
+  }
+
   //////////////
   // Disable some of the interferring embeded nao safeties (collision avoidance...)
   //////////////
@@ -131,12 +139,8 @@ void MCControlNAO::control_thread()
           angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
         }
 
-        // std::vector<std::string> joints = {"Device/SubDeviceList/HeadYaw/Position/Actuator/Value"};
-        // std::vector<float> values = {-0.5};
         al_fastdcm->callVoid("setJointAngles", names, angles);
 
-        // XXX consider using the fast version
-        // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
         // float fractionMaxSpeed = 1.f;
         // try
         // {
@@ -177,33 +181,9 @@ void MCControlNAO::handleSensors()
   while (m_running)
   {
     auto start = std::chrono::high_resolution_clock::now();
-    // Get The Left Foot Force Sensor Values
-    double LFsrFL = al_memory->getData("Device/SubDeviceList/LFoot/FSR/FrontLeft/Sensor/Value");
-    double LFsrFR = al_memory->getData("Device/SubDeviceList/LFoot/FSR/FrontRight/Sensor/Value");
-    double LFsrBL = al_memory->getData("Device/SubDeviceList/LFoot/FSR/RearLeft/Sensor/Value");
-    double LFsrBR = al_memory->getData("Device/SubDeviceList/LFoot/FSR/RearRight/Sensor/Value");
-    // LOG_INFO("Left FSR [Kg] " << LFsrFL << LFsrFR << LFsrBL << LFsrBR);
-
-    // Get The Right Foot Force Sensor Values
-    double RFsrFL = al_memory->getData("Device/SubDeviceList/RFoot/FSR/FrontLeft/Sensor/Value");
-    double RFsrFR = al_memory->getData("Device/SubDeviceList/RFoot/FSR/FrontRight/Sensor/Value");
-    double RFsrBL = al_memory->getData("Device/SubDeviceList/RFoot/FSR/RearLeft/Sensor/Value");
-    double RFsrBR = al_memory->getData("Device/SubDeviceList/RFoot/FSR/RearRight/Sensor/Value");
-    // LOG_INFO("Left FSR [Kg] " << RFsrFL << RFsrFR << RFsrBL << RFsrBR);
-
-    accIn(0) = al_memory->getData("Device/SubDeviceList/InertialSensor/AccelerometerX/Sensor/Value");
-    accIn(1) = al_memory->getData("Device/SubDeviceList/InertialSensor/AccelerometerY/Sensor/Value");
-    accIn(2) = al_memory->getData("Device/SubDeviceList/InertialSensor/AccelerometerZ/Sensor/Value");
-    // LOG_INFO("Accelerometer: " << accIn);
-
-    rateIn(0) = al_memory->getData("Device/SubDeviceList/InertialSensor/GyroscopeX/Sensor/Value");
-    rateIn(1) = al_memory->getData("Device/SubDeviceList/InertialSensor/GyroscopeY/Sensor/Value");
-    rateIn(2) = al_memory->getData("Device/SubDeviceList/InertialSensor/GyroscopeZ/Sensor/Value");
-    // LOG_INFO("Gyrometer: " << rateIn);
+    AL::ALValue sensors = al_fastdcm->call<AL::ALValue>("getSensors");
 
     // Get encoder values
-    // XXX consider using the fast version
-    // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
     qIn.resize(m_controller.robot().mb().nrDof());
     const auto& ref_joint_order = m_controller.ref_joint_order();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
@@ -216,9 +196,76 @@ void MCControlNAO::handleSensors()
       }
       else
       {
-        qIn[i] = al_memory->getData("Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value");
+        qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value"]];
+        // LOG_INFO("qIn[i] = " << qIn[i]);
       }
     }
+    accIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerX/Sensor/Value"]];
+    accIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerY/Sensor/Value"]];
+    accIn(2) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerZ/Sensor/Value"]];
+    // LOG_INFO("Accelerometer: " << accIn);
+
+    rateIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeX/Sensor/Value"]];
+    rateIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeY/Sensor/Value"]];
+    rateIn(2) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeZ/Sensor/Value"]];
+    // LOG_INFO("Gyrometer: " << rateIn);
+
+    // Get The Left Foot Force Sensor Values
+    double LFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontLeft/Sensor/Value"]];
+    double LFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontRight/Sensor/Value"]];
+    double LFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearLeft/Sensor/Value"]];
+    double LFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearRight/Sensor/Value"]];
+    // LOG_INFO("Left FSR [Kg] " << LFsrFL << LFsrFR << LFsrBL << LFsrBR);
+
+    // Get The Right Foot Force Sensor Values
+    double RFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontLeft/Sensor/Value"]];
+    double RFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontRight/Sensor/Value"]];
+    double RFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearLeft/Sensor/Value"]];
+    double RFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearRight/Sensor/Value"]];
+    // LOG_INFO("Left FSR [Kg] " << RFsrFL << RFsrFR << RFsrBL << RFsrBR);
+
+    // Get The Left Foot Force Sensor Values
+    // double LFsrFL = al_memory->getData("Device/SubDeviceList/LFoot/FSR/FrontLeft/Sensor/Value");
+    // double LFsrFR = al_memory->getData("Device/SubDeviceList/LFoot/FSR/FrontRight/Sensor/Value");
+    // double LFsrBL = al_memory->getData("Device/SubDeviceList/LFoot/FSR/RearLeft/Sensor/Value");
+    // double LFsrBR = al_memory->getData("Device/SubDeviceList/LFoot/FSR/RearRight/Sensor/Value");
+    // // LOG_INFO("Left FSR [Kg] " << LFsrFL << LFsrFR << LFsrBL << LFsrBR);
+
+    // // Get The Right Foot Force Sensor Values
+    // double RFsrFL = al_memory->getData("Device/SubDeviceList/RFoot/FSR/FrontLeft/Sensor/Value");
+    // double RFsrFR = al_memory->getData("Device/SubDeviceList/RFoot/FSR/FrontRight/Sensor/Value");
+    // double RFsrBL = al_memory->getData("Device/SubDeviceList/RFoot/FSR/RearLeft/Sensor/Value");
+    // double RFsrBR = al_memory->getData("Device/SubDeviceList/RFoot/FSR/RearRight/Sensor/Value");
+    // // LOG_INFO("Left FSR [Kg] " << RFsrFL << RFsrFR << RFsrBL << RFsrBR);
+
+    // accIn(0) = al_memory->getData("Device/SubDeviceList/InertialSensor/AccelerometerX/Sensor/Value");
+    // accIn(1) = al_memory->getData("Device/SubDeviceList/InertialSensor/AccelerometerY/Sensor/Value");
+    // accIn(2) = al_memory->getData("Device/SubDeviceList/InertialSensor/AccelerometerZ/Sensor/Value");
+    // // LOG_INFO("Accelerometer: " << accIn);
+
+    // rateIn(0) = al_memory->getData("Device/SubDeviceList/InertialSensor/GyroscopeX/Sensor/Value");
+    // rateIn(1) = al_memory->getData("Device/SubDeviceList/InertialSensor/GyroscopeY/Sensor/Value");
+    // rateIn(2) = al_memory->getData("Device/SubDeviceList/InertialSensor/GyroscopeZ/Sensor/Value");
+    // // LOG_INFO("Gyrometer: " << rateIn);
+
+    // // Get encoder values
+    // // XXX consider using the fast version
+    // // http://doc.aldebaran.com/1-14/dev/cpp/examples/sensors/fastgetsetdcm/fastgetsetexample.html
+    // qIn.resize(m_controller.robot().mb().nrDof());
+    // const auto& ref_joint_order = m_controller.ref_joint_order();
+    // for (unsigned i = 0; i < ref_joint_order.size(); ++i)
+    // {
+    //   if (std::find(std::begin(deactivatedJoints), std::end(deactivatedJoints), ref_joint_order[i]) !=
+    //       std::end(deactivatedJoints))
+    //   {
+    //     // XXX default value
+    //     qIn[i] = 0;
+    //   }
+    //   else
+    //   {
+    //     qIn[i] = al_memory->getData("Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value");
+    //   }
+    // }
 
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
@@ -244,7 +291,7 @@ void MCControlNAO::servo(const bool state)
   // XXX sets stiffness to max
   if (m_servo)
   {
-    al_fastdcm->callVoid("setStiffness", .5);
+    al_fastdcm->callVoid("setStiffness", 1.);
     // AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
     // // Uncomment for doom
     // al_motion->setStiffnesses(names, joint_stiffness);

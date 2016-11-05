@@ -99,5 +99,8 @@ class MCControlNAO
   std::thread control_th;
   std::thread sensor_th;
 
+  // Maps sensor name to sensor index
+  std::map<std::string, size_t> sensorOrderMap;
+
 };
 } /* mc_nao */
