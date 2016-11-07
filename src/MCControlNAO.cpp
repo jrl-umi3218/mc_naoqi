@@ -49,7 +49,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
     if (std::find(deactivatedJoints.begin(), deactivatedJoints.end(), j) == std::end(deactivatedJoints))
     {
       // HACK for mimic joint RHipYawPitch
-      if(j != "RHipYawPitch")
+      if (j != "RHipYawPitch")
       {
         activeJoints.push_back(j);
       }
@@ -110,6 +110,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   // Disable self-collision checks
   al_motion->setCollisionProtectionEnabled("Arms", false);
 
+  qIn.resize(m_controller.robot().mb().nrDof());
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
 }
@@ -189,7 +190,6 @@ void MCControlNAO::handleSensors()
     AL::ALValue sensors = al_fastdcm->call<AL::ALValue>("getSensors");
 
     // Get encoder values
-    qIn.resize(m_controller.robot().mb().nrDof());
     const auto& ref_joint_order = m_controller.ref_joint_order();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
@@ -200,7 +200,7 @@ void MCControlNAO::handleSensors()
         qIn[i] = 0;
       }
       // HACK, RHipYawPitch is a joint mimic of LHipYawPitch
-      else if(ref_joint_order[i] == "RHipYawPitch")
+      else if (ref_joint_order[i] == "RHipYawPitch")
       {
         qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/LHipYawPitch/Position/Sensor/Value"]];
       }
@@ -301,6 +301,30 @@ void MCControlNAO::servo(const bool state)
   // XXX sets stiffness to max
   if (m_servo)
   {
+    // If controller is not running, set to current joint state
+    // from encoder
+    if (!m_controller.running)
+    {
+      AL::ALValue names(activeJoints);
+      AL::ALValue angles = AL::ALValue::array(0);
+      angles.arraySetSize(activeJoints.size());
+      // XXX improve once GlobalController improvements are merged
+      // If controller is not running, send actual joint values to robot
+      // so that servo on starts at correct values
+      for (unsigned int i = 0; i < activeJoints.size(); ++i)
+      {
+        const auto& jname = activeJoints[i];
+        const auto& order = m_controller.ref_joint_order();
+        size_t index = std::find(std::begin(order), std::end(order), jname) - std::begin(order);
+        if (index < order.size())
+        {
+          angles[i] = qIn[index];
+          LOG_INFO("setting " << jname << " = " << angles[i]);
+        }
+      }
+      al_fastdcm->callVoid("setJointAngles", names, angles);
+    }
+
     al_fastdcm->callVoid("setStiffness", 1.);
     // AL::ALValue joint_stiffness(std::vector<float>(activeJoints.size(), 1));
     // // Uncomment for doom
