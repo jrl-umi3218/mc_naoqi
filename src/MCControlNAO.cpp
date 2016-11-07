@@ -48,7 +48,11 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   {
     if (std::find(deactivatedJoints.begin(), deactivatedJoints.end(), j) == std::end(deactivatedJoints))
     {
-      activeJoints.push_back(j);
+      // HACK for mimic joint RHipYawPitch
+      if(j != "RHipYawPitch")
+      {
+        activeJoints.push_back(j);
+      }
     }
   }
 
@@ -88,7 +92,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   al_fastdcm->call<AL::ALValue>("getSensorsOrder").ToStringArray(sensorsOrder);
   for (size_t i = 0; i < sensorsOrder.size(); i++)
   {
-    LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
+    // LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
     sensorOrderMap[sensorsOrder[i]] = i;
   }
 
@@ -137,6 +141,7 @@ void MCControlNAO::control_thread()
         for (unsigned int i = 0; i < activeJoints.size(); ++i)
         {
           angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
+          // LOG_INFO(activeJoints[i] << " = " << angles[i]);
         }
 
         al_fastdcm->callVoid("setJointAngles", names, angles);
@@ -193,6 +198,11 @@ void MCControlNAO::handleSensors()
       {
         // XXX default value
         qIn[i] = 0;
+      }
+      // HACK, RHipYawPitch is a joint mimic of LHipYawPitch
+      else if(ref_joint_order[i] == "RHipYawPitch")
+      {
+        qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/LHipYawPitch/Position/Sensor/Value"]];
       }
       else
       {
