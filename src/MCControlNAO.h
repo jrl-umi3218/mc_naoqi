@@ -79,8 +79,6 @@ class MCControlNAO
   /* Connection information */
   /*! Connection host */
   std::string host;
-  /*! Remote port for sensor connection */
-  unsigned int portSensor;
   /*! Remote port for control connection */
   unsigned int portControl;
 

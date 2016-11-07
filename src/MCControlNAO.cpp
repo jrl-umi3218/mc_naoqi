@@ -19,14 +19,12 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
     : m_controller(controller),
 
       m_service(this->m_controller),
-      // m_service(this->m_controller),
       m_timeStep(1000 * controller.timestep()),
       m_running(true),
       init(false),
       m_wrenchesNames(controller.robot().forceSensorsByName()),
       iter_since_start(0),
       host(host),
-      portSensor(9559),
       portControl(9559)
 {
   LOG_INFO("timestep : " << controller.timestep());
