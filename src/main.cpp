@@ -107,7 +107,7 @@ namespace
     {"move_com", std::bind(&move_com, std::placeholders::_1, std::placeholders::_2)},
     {"play_next_stance", std::bind(&play_next_stance, std::placeholders::_1, std::placeholders::_2)},
     {"hs", std::bind(&GoToHalfSitPose, std::placeholders::_1, std::placeholders::_2)},
-    {"cc", std::bind(&ChangeController, std::placeholders::_1, std::placeholders::_2)},
+    // {"cc", std::bind(&ChangeController, std::placeholders::_1, std::placeholders::_2)},
     {"send_msg", std::bind(&send_msg, std::placeholders::_1, std::placeholders::_2)},
     {"send_recv_msg", std::bind(&send_recv_msg, std::placeholders::_1, std::placeholders::_2)}
   };
@@ -136,6 +136,16 @@ void input_thread(MCControlNAO & controlNAO)
     else if(token == "on")
     {
       controlNAO.servo(true);
+    }
+    else if(token == "cc")
+    {
+      std::string controller_name;
+      ss >> controller_name;
+
+      // Stop control
+      controlNAO.stop();
+      controlNAO.controller().running = false;
+      controlNAO.controller().EnableController(controller_name);
     }
     else if(token == "start")
     {

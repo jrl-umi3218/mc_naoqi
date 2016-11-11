@@ -21,6 +21,7 @@ namespace AL
 {
 class ALMotionProxy;
 class ALMemoryProxy;
+class ALPreferenceManagerProxy;
 }
 
 
@@ -78,8 +79,6 @@ class MCControlNAO
   /* Connection information */
   /*! Connection host */
   std::string host;
-  /*! Remote port for sensor connection */
-  unsigned int portSensor;
   /*! Remote port for control connection */
   unsigned int portControl;
 
@@ -88,9 +87,18 @@ class MCControlNAO
   boost::shared_ptr<NAOModule> nao_module;
   /*! Gives high level access to actuators */
   std::unique_ptr<AL::ALMotionProxy> al_motion;
+  std::unique_ptr<AL::ALPreferenceManagerProxy> al_preference;
   /*! Gives access to nao memory (read force sensors...) */
   std::unique_ptr<AL::ALMemoryProxy> al_memory;
+
+  /*! Custom DCM module for fast access to NAO memory */
+  std::unique_ptr<AL::ALProxy> al_fastdcm;
+
   std::thread control_th;
   std::thread sensor_th;
+
+  // Maps sensor name to sensor index
+  std::map<std::string, size_t> sensorOrderMap;
+
 };
 } /* mc_nao */
