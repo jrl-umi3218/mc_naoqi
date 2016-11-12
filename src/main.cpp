@@ -177,7 +177,7 @@ int main(int argc, char **argv)
   po::options_description desc("MCControlNAO options");
   desc.add_options()
     ("help", "display help message")
-    ("host,h", po::value<std::string>(&host)->default_value("hrp4005c"), "connection host")
+    ("host,h", po::value<std::string>(&host)->default_value("nao"), "connection host")
     ("conf,f", po::value<std::string>(&conf_file)->default_value(mc_rtc::CONF_PATH), "configuration file");
 
 

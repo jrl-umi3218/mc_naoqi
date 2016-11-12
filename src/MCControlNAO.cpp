@@ -260,7 +260,11 @@ void MCControlNAO::servo(const bool state)
       al_fastdcm->callVoid("setJointAngles", names, angles);
     }
 
-    al_fastdcm->callVoid("setStiffness", 1.);
+    // Gradually increase stiffness over 1s to prevent initial jerky motion
+    for (int i = 0; i < 100; ++i) {
+      al_fastdcm->callVoid("setStiffness", i/100.);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
   else
   { // Servo OFF
