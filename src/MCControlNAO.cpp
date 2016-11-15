@@ -108,6 +108,9 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   // Disable self-collision checks
   al_motion->setCollisionProtectionEnabled("Arms", false);
 
+  m_controller.setSensorOrientation(Eigen::Quaterniond::Identity());
+  m_controller.setSensorPosition(Eigen::Vector3d::Zero());
+
   qIn.resize(m_controller.robot().mb().nrDof());
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
@@ -171,20 +174,25 @@ void MCControlNAO::handleSensors()
     const auto& ref_joint_order = m_controller.ref_joint_order();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
-      if (std::find(std::begin(deactivatedJoints), std::end(deactivatedJoints), ref_joint_order[i]) !=
+      // HACK, RHipYawPitch is a joint mimic of LHipYawPitch
+      if (ref_joint_order[i] == "RHipYawPitch")
+      {
+        qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/LHipYawPitch/Position/Sensor/Value"]];
+        // LOG_INFO("[Sensors] RHipYawPitch: " << qIn[i]);
+      }
+      else if (std::find(std::begin(deactivatedJoints), std::end(deactivatedJoints), ref_joint_order[i]) !=
           std::end(deactivatedJoints))
       {
         // XXX default value
         qIn[i] = 0;
       }
-      // HACK, RHipYawPitch is a joint mimic of LHipYawPitch
-      else if (ref_joint_order[i] == "RHipYawPitch")
-      {
-        qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/LHipYawPitch/Position/Sensor/Value"]];
-      }
       else
       {
         qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value"]];
+        // if(ref_joint_order[i] == "LHipYawPitch")
+        // {
+        //   LOG_INFO("[Sensors] LHipYawPitch: " << qIn[i]);
+        // }
         // LOG_INFO("qIn[i] = " << qIn[i]);
       }
     }
