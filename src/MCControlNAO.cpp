@@ -145,6 +145,8 @@ void MCControlNAO::control_thread()
           angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
           // LOG_INFO(activeJoints[i] << " = " << angles[i]);
         }
+        // LOG_INFO("NAO: RHipYawPitch: " << res.robots_state[0].q.at("RHipYawPitch")[0]);
+        // LOG_INFO("NAO: LHipYawPitch: " << res.robots_state[0].q.at("LHipYawPitch")[0]);
 
         al_fastdcm->callVoid("setJointAngles", names, angles);
       }
@@ -219,10 +221,17 @@ void MCControlNAO::handleSensors()
     double RFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearLeft/Sensor/Value"]];
     double RFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearRight/Sensor/Value"]];
     // LOG_INFO("Left FSR [Kg] " << RFsrFL << RFsrFR << RFsrBL << RFsrBR);
+    double LFsrTOTAL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/TotalWeight/Sensor/Value"]];
+    double RFsrTOTAL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/TotalWeight/Sensor/Value"]];
+
+    std::map<std::string, sva::ForceVecd> wrenches;
+    wrenches["LF_TOTAL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
+    wrenches["RF_TOTAL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
 
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);
+    m_controller.setWrenches(wrenches);
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
     if (elapsed * 1000 > m_timeStep)
     {
