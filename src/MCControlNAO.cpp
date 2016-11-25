@@ -111,7 +111,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   m_controller.setSensorOrientation(Eigen::Quaterniond::Identity());
   m_controller.setSensorPosition(Eigen::Vector3d::Zero());
 
-  qIn.resize(m_controller.robot().mb().nrDof());
+  qIn.resize(m_controller.ref_joint_order().size());
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
 }
