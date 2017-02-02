@@ -4,6 +4,7 @@ set(PROJECT_NAME mc_rtc_nao)
 set(PROJECT_DESCRIPTION mc_rtc_nao)
 set(PROJECT_URL https://gite.lirmm.fr/atanguy/mc_rtc_nao)
 set(PROJECT_DEBUG_POSTFIX "_d")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/base.cmake)
 # include(cmake/boost.cmake)
@@ -26,7 +27,6 @@ add_definitions(-std=gnu++11)
 
 find_package(qibuild)
 search_for_eigen()
-add_required_dependency(jsoncpp)
 add_required_dependency(mc_rtc)
 
 # add_required_dependency(tcp-com)
@@ -35,4 +35,4 @@ add_required_dependency(mc_rtc)
 
 add_subdirectory(src)
 
-# setup_project_finalize()
+setup_project_finalize()

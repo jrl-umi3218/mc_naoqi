@@ -21,12 +21,11 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
       m_service(this->m_controller),
       m_timeStep(1000 * controller.timestep()),
       m_running(true),
-      init(false),
-      m_wrenchesNames(controller.robot().forceSensorsByName()),
       iter_since_start(0),
       host(host),
       portControl(9559)
 {
+  m_controller.running = false;
   LOG_INFO("timestep : " << controller.timestep());
   LOG_INFO("m_timeStep : " << m_timeStep);
   if (config.isMember("Deactivated"))
@@ -41,7 +40,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
     LOG_INFO(j);
   }
 
-  const auto& ref_joint_order = m_controller.ref_joint_order();
+  const auto& ref_joint_order = m_controller.robot().refJointOrder();
   for (const auto& j : ref_joint_order)
   {
     if (std::find(deactivatedJoints.begin(), deactivatedJoints.end(), j) == std::end(deactivatedJoints))
@@ -111,7 +110,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   m_controller.setSensorOrientation(Eigen::Quaterniond::Identity());
   m_controller.setSensorPosition(Eigen::Vector3d::Zero());
 
-  qIn.resize(m_controller.ref_joint_order().size());
+  qIn.resize(m_controller.robot().refJointOrder().size());
   control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
   sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
 }
@@ -119,6 +118,15 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
 MCControlNAO::~MCControlNAO() { control_th.join(); }
 void MCControlNAO::control_thread()
 {
+  LOG_INFO("[Control] Waiting for sensor data");
+  std::unique_lock<std::mutex> lk(control_mut);
+  control_cv.wait(lk);
+  LOG_INFO("[Control] Got sensor data, starting control");
+
+  LOG_INFO("[Control] Initializing controller");
+  m_controller.init(qIn);
+  LOG_INFO("[Control] Controller initialized");
+
   AL::ALValue names(activeJoints);
   AL::ALValue angles = AL::ALValue::array(0);
   angles.arraySetSize(activeJoints.size());
@@ -127,7 +135,7 @@ void MCControlNAO::control_thread()
   {
     auto start = std::chrono::high_resolution_clock::now();
 
-    if (m_controller.running && init)
+    if (m_controller.running)
     {
       /**
        * CONTROL stuff goes here
@@ -138,7 +146,7 @@ void MCControlNAO::control_thread()
         // LOG_INFO("Controller running");
         // FIXME Fill t
         double t = 0.;  // in nano second
-        const mc_control::QPResultMsg& res = m_controller.send(t);
+        const mc_solver::QPResultMsg& res = m_controller.send(t);
 
         for (unsigned int i = 0; i < activeJoints.size(); ++i)
         {
@@ -173,7 +181,7 @@ void MCControlNAO::handleSensors()
     AL::ALValue sensors = al_fastdcm->call<AL::ALValue>("getSensors");
 
     // Get encoder values
-    const auto& ref_joint_order = m_controller.ref_joint_order();
+    const auto& ref_joint_order = m_controller.robot().refJointOrder();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
       // HACK, RHipYawPitch is a joint mimic of LHipYawPitch
@@ -225,13 +233,16 @@ void MCControlNAO::handleSensors()
     double RFsrTOTAL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/TotalWeight/Sensor/Value"]];
 
     std::map<std::string, sva::ForceVecd> wrenches;
-    wrenches["LF_TOTAL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
-    wrenches["RF_TOTAL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
+    wrenches["LF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
+    wrenches["RF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
 
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);
     m_controller.setWrenches(wrenches);
+    // Start control
+    // LOG_INFO("[Sensors] Got sensor data, notifying control thread");
+    control_cv.notify_one();
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
     if (elapsed * 1000 > m_timeStep)
     {
@@ -266,7 +277,7 @@ void MCControlNAO::servo(const bool state)
       for (unsigned int i = 0; i < activeJoints.size(); ++i)
       {
         const auto& jname = activeJoints[i];
-        const auto& order = m_controller.ref_joint_order();
+        const auto& order = m_controller.robot().refJointOrder();
         size_t index = std::find(std::begin(order), std::end(order), jname) - std::begin(order);
         if (index < order.size())
         {
@@ -292,12 +303,7 @@ void MCControlNAO::servo(const bool state)
 bool MCControlNAO::running() { return m_running; }
 void MCControlNAO::start()
 {
-  if (!init)
-  {
-    LOG_INFO("Init controller");
-    m_controller.init(qIn);
-    init = true;
-  }
+  m_controller.init(qIn);
   m_controller.running = true;
 }
 void MCControlNAO::stop()

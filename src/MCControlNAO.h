@@ -5,6 +5,8 @@
 
 // boost
 #include <boost/thread.hpp>
+#include <mutex>
+#include <condition_variable>
 
 // std
 #include <fstream>
@@ -57,14 +59,9 @@ class MCControlNAO
   bool m_running = true;
   /*! Servo on/off (joint stiffness 0 if off) */
   bool m_servo = false;
-  bool init = false;
   /* Sensor information */
   /*! Encoder values */
   std::vector<double> qIn;
-  /*! Names of force sensors */
-  std::vector<std::string> m_wrenchesNames;
-  /*! Value of force sensors */
-  std::map<std::string, sva::ForceVecd> m_wrenches;
   /*! Orientation sensor */
   Eigen::Vector3d rpyIn;
   /*! Accelerometer */
@@ -95,6 +92,10 @@ class MCControlNAO
   std::unique_ptr<AL::ALProxy> al_fastdcm;
 
   std::thread control_th;
+  // Wait for sensor input before starting control
+  std::condition_variable control_cv;
+  std::mutex control_mut;
+
   std::thread sensor_th;
 
   // Maps sensor name to sensor index
