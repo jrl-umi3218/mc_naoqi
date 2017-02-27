@@ -53,7 +53,6 @@ class MCControlNAO
   std::vector<std::string> deactivatedJoints;
   std::vector<std::string> activeJoints;
 
-  // MCControlNAOService m_service;
   /*! Timestep expressed in ms */
   unsigned int m_timeStep;
   bool m_running = true;

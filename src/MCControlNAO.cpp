@@ -12,6 +12,8 @@
 
 #include <algorithm>
 
+#include <ros/ros.h>
+
 namespace mc_nao
 {
 MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller,
@@ -107,6 +109,9 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   // Disable self-collision checks
   al_motion->setCollisionProtectionEnabled("Arms", false);
 
+  // Disable smart stiffness control
+  al_motion->setSmartStiffnessEnabled(false);
+
   m_controller.setSensorOrientation(Eigen::Quaterniond::Identity());
   m_controller.setSensorPosition(Eigen::Vector3d::Zero());
 
@@ -141,9 +146,9 @@ void MCControlNAO::control_thread()
        * CONTROL stuff goes here
        **/
 
+      // LOG_INFO("[Control] Running controller");
       if (m_controller.run())
       {
-        // LOG_INFO("Controller running");
         // FIXME Fill t
         double t = 0.;  // in nano second
         const mc_solver::QPResultMsg& res = m_controller.send(t);
@@ -156,6 +161,7 @@ void MCControlNAO::control_thread()
         // LOG_INFO("NAO: RHipYawPitch: " << res.robots_state[0].q.at("RHipYawPitch")[0]);
         // LOG_INFO("NAO: LHipYawPitch: " << res.robots_state[0].q.at("LHipYawPitch")[0]);
 
+        // LOG_INFO("[Control] Sending to robot");
         al_fastdcm->callVoid("setJointAngles", names, angles);
       }
     }
@@ -236,6 +242,7 @@ void MCControlNAO::handleSensors()
     wrenches["LF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
     wrenches["RF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
 
+    // LOG_INFO("[Sensors] Setting sensors");
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);

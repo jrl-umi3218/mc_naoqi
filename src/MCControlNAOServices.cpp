@@ -21,10 +21,12 @@ struct MCControlNAOServiceImpl
   MCControlNAOServiceImpl(mc_control::MCGlobalController &controller)
       : controller(controller), nh(mc_rtc::ROSBridge::get_node_handle())
   {
+    LOG_INFO("[MCControlNAO] MCControlNAOServiceImpl");
     if (nh)
     {
-      LOG_SUCCESS("Starting ROS services")
+      LOG_INFO("[MCControlNAO] Starting ROS services")
       start_services();
+      LOG_SUCCESS("[MCControlNAO] ROS services started")
     }
     else
     {
@@ -82,6 +84,7 @@ struct MCControlNAOServiceImpl
 
   bool set_joint_pos_callback(mc_tcp_msgs::set_joint_pos::Request &req, mc_tcp_msgs::set_joint_pos::Response &resp)
   {
+    LOG_INFO("[MCControlNAO] set_joint_pos service " << req.jname << ", " << req.q);
     resp.success = controller.set_joint_pos(req.jname, req.q);
     return true;
   }

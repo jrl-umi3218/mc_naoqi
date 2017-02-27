@@ -16,6 +16,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CXX_DISABLE_WERROR 1)
 
 set(DOXYGEN_USE_MATHJAX "YES")
+
+search_for_eigen()
 setup_project()
 
 # add_definitions(-std=c++11)
