@@ -5,14 +5,14 @@
 // ROS includes
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-#include <mc_tcp_msgs/EnableController.h>
-#include <mc_tcp_msgs/close_grippers.h>
-#include <mc_tcp_msgs/open_grippers.h>
-#include <mc_tcp_msgs/play_next_stance.h>
-#include <mc_tcp_msgs/send_msg.h>
-#include <mc_tcp_msgs/send_recv_msg.h>
-#include <mc_tcp_msgs/set_gripper.h>
-#include <mc_tcp_msgs/set_joint_pos.h>
+#include <mc_rtc_msgs/EnableController.h>
+#include <mc_rtc_msgs/close_grippers.h>
+#include <mc_rtc_msgs/open_grippers.h>
+#include <mc_rtc_msgs/play_next_stance.h>
+#include <mc_rtc_msgs/send_msg.h>
+#include <mc_rtc_msgs/send_recv_msg.h>
+#include <mc_rtc_msgs/set_gripper.h>
+#include <mc_rtc_msgs/set_joint_pos.h>
 #include <ros/ros.h>
 #pragma GCC diagnostic pop
 
@@ -54,55 +54,55 @@ struct MCControlNAOServiceImpl
         nh->advertiseService("mc_rtc_nao/send_recv_msg", &MCControlNAOServiceImpl::send_recv_msg_callback, this));
   }
 
-  bool EnableController_callback(mc_tcp_msgs::EnableController::Request &req,
-                                 mc_tcp_msgs::EnableController::Response &resp)
+  bool EnableController_callback(mc_rtc_msgs::EnableController::Request &req,
+                                 mc_rtc_msgs::EnableController::Response &resp)
   {
     resp.success = controller.EnableController(req.name);
     return true;
   }
 
-  bool close_grippers_callback(mc_tcp_msgs::close_grippers::Request &, mc_tcp_msgs::close_grippers::Response &resp)
+  bool close_grippers_callback(mc_rtc_msgs::close_grippers::Request &, mc_rtc_msgs::close_grippers::Response &resp)
   {
     controller.setGripperOpenPercent(0.);
     resp.success = true;
     return true;
   }
 
-  bool open_grippers_callback(mc_tcp_msgs::open_grippers::Request &, mc_tcp_msgs::open_grippers::Response &resp)
+  bool open_grippers_callback(mc_rtc_msgs::open_grippers::Request &, mc_rtc_msgs::open_grippers::Response &resp)
   {
     controller.setGripperOpenPercent(1.);
     resp.success = true;
     return true;
   }
 
-  bool set_gripper_callback(mc_tcp_msgs::set_gripper::Request &req, mc_tcp_msgs::set_gripper::Response &resp)
+  bool set_gripper_callback(mc_rtc_msgs::set_gripper::Request &req, mc_rtc_msgs::set_gripper::Response &resp)
   {
     controller.setGripperTargetQ(req.gname, req.values);
     resp.success = true;
     return true;
   }
 
-  bool set_joint_pos_callback(mc_tcp_msgs::set_joint_pos::Request &req, mc_tcp_msgs::set_joint_pos::Response &resp)
+  bool set_joint_pos_callback(mc_rtc_msgs::set_joint_pos::Request &req, mc_rtc_msgs::set_joint_pos::Response &resp)
   {
     LOG_INFO("[MCControlNAO] set_joint_pos service " << req.jname << ", " << req.q);
     resp.success = controller.set_joint_pos(req.jname, req.q);
     return true;
   }
 
-  bool play_next_stance_callback(mc_tcp_msgs::play_next_stance::Request &,
-                                 mc_tcp_msgs::play_next_stance::Response &resp)
+  bool play_next_stance_callback(mc_rtc_msgs::play_next_stance::Request &,
+                                 mc_rtc_msgs::play_next_stance::Response &resp)
   {
     resp.success = controller.play_next_stance();
     return true;
   }
 
-  bool send_msg_callback(mc_tcp_msgs::send_msg::Request &req, mc_tcp_msgs::send_msg::Response &resp)
+  bool send_msg_callback(mc_rtc_msgs::send_msg::Request &req, mc_rtc_msgs::send_msg::Response &resp)
   {
     resp.success = controller.send_msg(req.msg);
     return true;
   }
 
-  bool send_recv_msg_callback(mc_tcp_msgs::send_recv_msg::Request &req, mc_tcp_msgs::send_recv_msg::Response &resp)
+  bool send_recv_msg_callback(mc_rtc_msgs::send_recv_msg::Request &req, mc_rtc_msgs::send_recv_msg::Response &resp)
   {
     resp.success = controller.send_recv_msg(req.msg, resp.msg);
     return true;

@@ -30,10 +30,7 @@ add_definitions(-std=gnu++11)
 find_package(qibuild)
 search_for_eigen()
 add_required_dependency(mc_rtc)
-
-# add_required_dependency(tcp-com)
-# add_required_dependency(tcp-control)
-# add_required_dependency(mc_tcp_msgs)
+add_required_dependency(mc_rtc_msgs)
 
 add_subdirectory(src)
 
