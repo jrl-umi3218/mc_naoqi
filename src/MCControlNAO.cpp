@@ -30,30 +30,6 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   m_controller.running = false;
   LOG_INFO("timestep : " << controller.timestep());
   LOG_INFO("m_timeStep : " << m_timeStep);
-  if (config.isMember("Deactivated"))
-  {
-    std::string robot_name = m_controller.robot().name();
-    deactivatedJoints = config("Deactivated");
-  }
-
-  LOG_INFO("Deactivated joints: ");
-  for (const auto& j : deactivatedJoints)
-  {
-    LOG_INFO(j);
-  }
-
-  const auto& ref_joint_order = m_controller.robot().refJointOrder();
-  for (const auto& j : ref_joint_order)
-  {
-    if (std::find(deactivatedJoints.begin(), deactivatedJoints.end(), j) == std::end(deactivatedJoints))
-    {
-      // HACK for mimic joint RHipYawPitch
-      if (j != "RHipYawPitch")
-      {
-        activeJoints.push_back(j);
-      }
-    }
-  }
 
   LOG_INFO("MCControlNAO: Connecting to " << host << ":" << portControl);
 
@@ -132,9 +108,9 @@ void MCControlNAO::control_thread()
   m_controller.init(qIn);
   LOG_INFO("[Control] Controller initialized");
 
-  AL::ALValue names(activeJoints);
   AL::ALValue angles = AL::ALValue::array(0);
-  angles.arraySetSize(activeJoints.size());
+  // number of actual joints to control
+  angles.arraySetSize(m_controller.robot().refJointOrder().size());
 
   while (m_running)
   {
@@ -153,28 +129,27 @@ void MCControlNAO::control_thread()
         double t = 0.;  // in nano second
         const mc_solver::QPResultMsg& res = m_controller.send(t);
 
-        for (unsigned int i = 0; i < activeJoints.size(); ++i)
-        {
-          angles[i] = res.robots_state[0].q.at(activeJoints[i])[0];
-          // LOG_INFO(activeJoints[i] << " = " << angles[i]);
+        for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i) {
+          const auto& jname = m_controller.robot().refJointOrder()[i];
+          angles[i] = res.robots_state[0].q.at(jname)[0];
+          LOG_INFO("setting " << jname << " = " << angles[i]);
         }
-        // LOG_INFO("NAO: RHipYawPitch: " << res.robots_state[0].q.at("RHipYawPitch")[0]);
-        // LOG_INFO("NAO: LHipYawPitch: " << res.robots_state[0].q.at("LHipYawPitch")[0]);
 
         // LOG_INFO("[Control] Sending to robot");
-        al_fastdcm->callVoid("setJointAngles", names, angles);
-      }
-    }
 
-    double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
-    if (elapsed * 1000 > m_timeStep)
-    {
-      LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << m_timeStep << " ms");
-    }
-    else
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
-    }
+        al_fastdcm->callVoid("setJointAngles", angles);
+      }
+
+      double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+      if (elapsed * 1000 > m_timeStep)
+      {
+        LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << m_timeStep << " ms");
+      }
+      else
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
+      }
+      }
   }
   LOG_INFO("MCControlNAO running thread stopped");
 }
@@ -190,27 +165,7 @@ void MCControlNAO::handleSensors()
     const auto& ref_joint_order = m_controller.robot().refJointOrder();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
-      // HACK, RHipYawPitch is a joint mimic of LHipYawPitch
-      if (ref_joint_order[i] == "RHipYawPitch")
-      {
-        qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/LHipYawPitch/Position/Sensor/Value"]];
-        // LOG_INFO("[Sensors] RHipYawPitch: " << qIn[i]);
-      }
-      else if (std::find(std::begin(deactivatedJoints), std::end(deactivatedJoints), ref_joint_order[i]) !=
-          std::end(deactivatedJoints))
-      {
-        // XXX default value
-        qIn[i] = 0;
-      }
-      else
-      {
-        qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value"]];
-        // if(ref_joint_order[i] == "LHipYawPitch")
-        // {
-        //   LOG_INFO("[Sensors] LHipYawPitch: " << qIn[i]);
-        // }
-        // LOG_INFO("qIn[i] = " << qIn[i]);
-      }
+      qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value"]];
     }
     accIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerX/Sensor/Value"]];
     accIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerY/Sensor/Value"]];
@@ -266,8 +221,6 @@ void MCControlNAO::servo(const bool state)
 {
   m_servo = state;
 
-  AL::ALValue names(activeJoints);
-
   // XXX sets stiffness to max
   if (m_servo)
   {
@@ -275,24 +228,17 @@ void MCControlNAO::servo(const bool state)
     // from encoder
     if (!m_controller.running)
     {
-      AL::ALValue names(activeJoints);
       AL::ALValue angles = AL::ALValue::array(0);
-      angles.arraySetSize(activeJoints.size());
+      angles.arraySetSize(m_controller.robot().refJointOrder().size());
       // XXX improve once GlobalController improvements are merged
       // If controller is not running, send actual joint values to robot
       // so that servo on starts at correct values
-      for (unsigned int i = 0; i < activeJoints.size(); ++i)
-      {
-        const auto& jname = activeJoints[i];
-        const auto& order = m_controller.robot().refJointOrder();
-        size_t index = std::find(std::begin(order), std::end(order), jname) - std::begin(order);
-        if (index < order.size())
-        {
-          angles[i] = qIn[index];
-          LOG_INFO("setting " << jname << " = " << angles[i]);
-        }
+
+      for (size_t i = 0; i < m_controller.robot().encoderValues().size(); ++i) {
+        angles[i] = m_controller.robot().encoderValues()[i];
+        LOG_INFO("setting " << m_controller.robot().refJointOrder()[i] << " = " << angles[i]);
       }
-      al_fastdcm->callVoid("setJointAngles", names, angles);
+      al_fastdcm->callVoid("setJointAngles", angles);
     }
 
     // Gradually increase stiffness over 1s to prevent initial jerky motion

@@ -50,8 +50,6 @@ class MCControlNAO
  private:
   mc_control::MCGlobalController& m_controller;
   MCControlNAOService m_service;
-  std::vector<std::string> deactivatedJoints;
-  std::vector<std::string> activeJoints;
 
   /*! Timestep expressed in ms */
   unsigned int m_timeStep;
@@ -99,6 +97,6 @@ class MCControlNAO
 
   // Maps sensor name to sensor index
   std::map<std::string, size_t> sensorOrderMap;
-
 };
+
 } /* mc_nao */
