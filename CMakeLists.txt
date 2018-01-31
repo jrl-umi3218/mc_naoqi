@@ -1,37 +1,41 @@
-cmake_minimum_required(VERSION 2.8)
-project(mc_rtc_nao)
-set(PROJECT_NAME mc_rtc_nao)
-set(PROJECT_DESCRIPTION mc_rtc_nao)
-set(PROJECT_URL https://gite.lirmm.fr/atanguy/mc_rtc_nao)
-set(PROJECT_DEBUG_POSTFIX "_d")
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+cmake_minimum_required(VERSION 2.8.3)
+project(mc_rtc_naoqi_ros)
+set(projectName mc_rtc_naoqi_ros)
+set(CMAKE_BUILD_TYPE Release)
 
-include(cmake/base.cmake)
-# include(cmake/boost.cmake)
-include(cmake/eigen.cmake)
-include(cmake/pkg-config.cmake)
-include(cmake/eigen.cmake)
+## Find catkin macros and libraries
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msgs
+  naoqi_libqi
+  naoqi_libqicore
+)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CXX_DISABLE_WERROR 1)
+FIND_PACKAGE(Boost COMPONENTS program_options REQUIRED)
+find_package(EIGEN3 REQUIRED)
 
-set(DOXYGEN_USE_MATHJAX "YES")
+#add_definitions(-DLIBQI_VERSION=${naoqi_libqi_VERSION_MAJOR}${naoqi_libqi_VERSION_MINOR})
 
-search_for_eigen()
-setup_project()
+include_directories(${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
+)
 
-# add_definitions(-std=c++11)
-# NAO SDK fails to compile with -std=c++11,
-# See https://github.com/aldebaran/libqi/issues/1 for more details
-add_definitions(-std=gnu++11)
+set ( SOURCES
+ src/main.cpp
+ src/MCControlNAO.cpp
+)
 
-# find_package(Boost REQUIRED COMPONENTS program_options)
+set ( HEADERS
+ src/MCControlNAO.h
+)
 
-find_package(qibuild)
-search_for_eigen()
-add_required_dependency(mc_rtc)
-add_required_dependency(mc_rtc_msgs)
+add_executable( mc_rtc_naoqi_ros ${SOURCES} ${HEADERS})
+target_link_libraries( mc_rtc_naoqi_ros 
+  ${catkin_LIBRARIES}
+  ${naoqi_libqi_LIBRARIES}
+  ${Boost_LIBRARIES}
+  mc_control
+  mc_rbdyn
+  mc_rtc_utils)
 
-add_subdirectory(src)
 
-setup_project_finalize()

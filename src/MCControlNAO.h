@@ -5,19 +5,16 @@
 
 // boost
 #include <boost/thread.hpp>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
 
 // std
 #include <fstream>
 
 #include <Eigen/Core>
 
-#include "NAOModule.h"
-#include "MCControlNAOServices.h"
-
-#include <alcommon/almodule.h>
-#include <alcommon/albroker.h>
+#include <qi/session.hpp>
+#include <qi/anyobject.hpp>
 
 namespace AL
 {
@@ -26,10 +23,11 @@ class ALMemoryProxy;
 class ALPreferenceManagerProxy;
 }
 
-
 namespace mc_nao
 {
-
+/**
+ * @brief Control interface for NAO and PEPPER robots
+ */
 class MCControlNAO
 {
  public:
@@ -37,8 +35,24 @@ class MCControlNAO
   virtual ~MCControlNAO();
 
   bool running();
+
+  /**
+   * @brief Start the control loop
+   */
   void start();
+
+  /**
+   * @brief Stop the control loop
+   */
   void stop();
+
+  /**
+   * @brief Gradually increase the stiffness to max value
+   *
+   * @param state
+   *  true: Turn on the actuators
+   *  false: Turn off the actuators
+   */
   void servo(const bool state);
 
   mc_control::MCGlobalController& controller();
@@ -49,7 +63,6 @@ class MCControlNAO
 
  private:
   mc_control::MCGlobalController& m_controller;
-  MCControlNAOService m_service;
 
   /*! Timestep expressed in ms */
   unsigned int m_timeStep;
@@ -77,16 +90,13 @@ class MCControlNAO
   unsigned int portControl;
 
   /* Handles communication with NAO */
-  boost::shared_ptr<AL::ALBroker> al_broker;
-  boost::shared_ptr<NAOModule> nao_module;
-  /*! Gives high level access to actuators */
-  std::unique_ptr<AL::ALMotionProxy> al_motion;
-  std::unique_ptr<AL::ALPreferenceManagerProxy> al_preference;
-  /*! Gives access to nao memory (read force sensors...) */
-  std::unique_ptr<AL::ALMemoryProxy> al_memory;
+  //boost::shared_ptr<AL::ALBroker> al_broker;
+  qi::SessionPtr al_broker;
+  //std::unique_ptr<AL::ALPreferenceManagerProxy> al_preference;
 
   /*! Custom DCM module for fast access to NAO memory */
-  std::unique_ptr<AL::ALProxy> al_fastdcm;
+  //std::unique_ptr<AL::ALProxy> al_fastdcm;
+  qi::AnyObject al_fastdcm;
 
   std::thread control_th;
   // Wait for sensor input before starting control

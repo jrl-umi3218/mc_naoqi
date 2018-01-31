@@ -195,9 +195,9 @@ int main(int argc, char **argv)
   }
 
   mc_control::MCGlobalController controller(conf_file);
-  if(controller.robot().name() != "nao")
+  if(controller.robot().name() != "nao" && controller.robot().name() != "pepper")
   {
-    LOG_ERROR("MCControlNAO: This program can only handle nao at the moment");
+    LOG_ERROR("MCControlNAO: This program can only handle nao and pepper at the moment");
     return 1;
   }
 
