@@ -31,7 +31,7 @@ namespace mc_nao
 class MCControlNAO
 {
  public:
-  MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller, const mc_control::Configuration&);
+  MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller);
   virtual ~MCControlNAO();
 
   bool running();

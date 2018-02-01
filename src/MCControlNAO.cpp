@@ -15,10 +15,9 @@
 
 namespace mc_nao
 {
-MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller,
-                           const mc_control::Configuration& config)
+MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller)
     : m_controller(controller),
-      m_timeStep(1000 * controller.timestep()),
+      m_timeStep(static_cast<unsigned int>(1000 * controller.timestep())),
       m_running(true),
       iter_since_start(0),
       host(host),
@@ -43,7 +42,7 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
 
 
   // Create Naoqi session
-  al_broker = qi::makeSession(); 
+  al_broker = qi::makeSession();
   // Try to connect with TCP to robot
   try{
     std::stringstream strstr;
@@ -112,7 +111,8 @@ void MCControlNAO::control_thread()
         for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i)
         {
           const auto& jname = m_controller.robot().refJointOrder()[i];
-          angles[i] = res.robots_state[0].q.at(jname)[0];
+          // XXX can we use double precision on fastgetset_dcm side?
+          angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
           //LOG_INFO("setting " << jname << " = " << angles[i]);
         }
 
@@ -166,21 +166,25 @@ void MCControlNAO::handleSensors()
       rateIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeX/Sensor/Value"]];
       rateIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeY/Sensor/Value"]];
       rateIn(2) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeZ/Sensor/Value"]];
-      // Get The Left Foot Force Sensor Values
-      double LFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontLeft/Sensor/Value"]];
-      double LFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontRight/Sensor/Value"]];
-      double LFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearLeft/Sensor/Value"]];
-      double LFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearRight/Sensor/Value"]];
-      // LOG_INFO("Left FSR [Kg] " << LFsrFL << LFsrFR << LFsrBL << LFsrBR);
 
-      // Get The Right Foot Force Sensor Values
-      double RFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontLeft/Sensor/Value"]];
-      double RFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontRight/Sensor/Value"]];
-      double RFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearLeft/Sensor/Value"]];
-      double RFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearRight/Sensor/Value"]];
-      // LOG_INFO("Left FSR [Kg] " << RFsrFL << RFsrFR << RFsrBL << RFsrBR);
       double LFsrTOTAL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/TotalWeight/Sensor/Value"]];
       double RFsrTOTAL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/TotalWeight/Sensor/Value"]];
+
+      // Other available force measurements. Not used for the moment {
+      // // Get The Left Foot Force Sensor Values
+      // double LFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontLeft/Sensor/Value"]];
+      // double LFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontRight/Sensor/Value"]];
+      // double LFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearLeft/Sensor/Value"]];
+      // double LFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearRight/Sensor/Value"]];
+      // // LOG_INFO("Left FSR [Kg] " << LFsrFL << LFsrFR << LFsrBL << LFsrBR);
+
+      // // Get The Right Foot Force Sensor Values
+      // double RFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontLeft/Sensor/Value"]];
+      // double RFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontRight/Sensor/Value"]];
+      // double RFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearLeft/Sensor/Value"]];
+      // double RFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearRight/Sensor/Value"]];
+      // LOG_INFO("Left FSR [Kg] " << RFsrFL << RFsrFR << RFsrBL << RFsrBR);
+      // }
 
       std::map<std::string, sva::ForceVecd> wrenches;
       wrenches["LF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
@@ -217,7 +221,7 @@ void MCControlNAO::handleSensors()
       std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
     }
   }
-};
+}
 
 void MCControlNAO::servo(const bool state)
 {
@@ -238,7 +242,8 @@ void MCControlNAO::servo(const bool state)
 
       for (size_t i = 0; i < m_controller.robot().encoderValues().size(); ++i)
       {
-        angles[i] = m_controller.robot().encoderValues()[i];
+        // XXX can we use double precision on fastgetset_dcm side?
+        angles[i] = static_cast<float>(m_controller.robot().encoderValues()[i]);
         LOG_INFO("setting " << m_controller.robot().refJointOrder()[i] << " = " << angles[i]);
       }
       al_fastdcm.call<void>("setJointAngles", angles);

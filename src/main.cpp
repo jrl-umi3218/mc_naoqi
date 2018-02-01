@@ -209,7 +209,7 @@ int main(int argc, char **argv)
         r.sleep();
       }
     });
-  mc_nao::MCControlNAO mc_control_nao(host, controller, mc_control::Configuration(conf_file));
+  mc_nao::MCControlNAO mc_control_nao(host, controller);
   std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
   th.join();
   t.join();
