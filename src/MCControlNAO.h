@@ -1,15 +1,8 @@
 #pragma once
 
-// mc_rtc
-#include <mc_control/mc_global_controller.h>
-
-// boost
-#include <boost/thread.hpp>
 #include <condition_variable>
 #include <mutex>
-
-// std
-#include <fstream>
+#include <thread>
 
 #include <Eigen/Core>
 
@@ -21,7 +14,12 @@ namespace AL
 class ALMotionProxy;
 class ALMemoryProxy;
 class ALPreferenceManagerProxy;
-}
+} /* AL */
+
+namespace mc_control
+{
+  class MCGlobalController;
+} /* mc_control */
 
 namespace mc_nao
 {
@@ -78,8 +76,6 @@ class MCControlNAO
   Eigen::Vector3d accIn;
   /*! Angular velocity */
   Eigen::Vector3d rateIn;
-  /*! Log file */
-  std::ofstream m_log;
   /*! Controller's iteration count*/
   unsigned int iter_since_start;
 
@@ -102,7 +98,6 @@ class MCControlNAO
   // Wait for sensor input before starting control
   std::condition_variable control_cv;
   std::mutex control_mut;
-
   std::thread sensor_th;
 
   // Maps sensor name to sensor index

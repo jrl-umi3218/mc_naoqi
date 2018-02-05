@@ -1,17 +1,12 @@
 #include "MCControlNAO.h"
 
-/*#include <alerror/alerror.h>
-#include <alproxies/almemoryproxy.h>
-#include <alproxies/almotionproxy.h>
-#include <alproxies/alpreferencemanagerproxy.h>*/
+// mc_rtc
+#include <mc_control/mc_global_controller.h>
 
 // std
 #include <algorithm>
 #include <chrono>
 #include <memory>
-#include <thread>
-
-#include <ros/ros.h>
 
 namespace mc_nao
 {
@@ -27,36 +22,26 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   LOG_INFO("timestep : " << controller.timestep());
   LOG_INFO("m_timeStep : " << m_timeStep);
 
-  LOG_INFO("MCControlNAO: Connecting to " << m_controller.robot().name() << "robot on address " << host << ":"
+  LOG_INFO("MCControlNAO: Connecting to " << m_controller.robot().name() << " robot on address " << host << ":"
                                           << portControl);
-
-  /*al_broker = AL::ALBroker::createBroker("MCControlNAOBroker", "0.0.0.0", 54000, host, portControl);
-  try
-  {
-    al_broker->createBroker("MCControlNAOBroker", "0.0.0.0", 0, host, portControl);
-  }
-  catch (...)
-  {
-    LOG_ERROR("Failed to create broker");
-  }*/
-
 
   // Create Naoqi session
   al_broker = qi::makeSession();
   // Try to connect with TCP to robot
-  try{
+  try
+  {
     std::stringstream strstr;
     strstr << "tcp://" << host << ":" << portControl;
     std::cout << "Connecting to " << host << ":" << portControl << std::endl;
     al_broker->connect(strstr.str()).wait();
-  }catch(const std::exception &e){
+  }
+  catch (const std::exception& e)
+  {
     std::cout << "Cannot connect to session: " << e.what() << std::endl;
     al_broker->close();
   }
   std::cout << "Connected" << std::endl;
 
-
-  //al_fastdcm = std::unique_ptr<AL::ALProxy>(new AL::ALProxy(al_broker, "FastGetSetDCM"));
   al_fastdcm = al_broker->service("FastGetSetDCM");
 
   std::vector<std::string> sensorsOrder = al_fastdcm.call<std::vector<std::string>>("getSensorsOrder");
@@ -88,7 +73,6 @@ void MCControlNAO::control_thread()
 
   std::vector<float> angles;
   // number of actual joints to control
-  //angles.arraySetSize(m_controller.robot().refJointOrder().size());
   angles.resize(m_controller.robot().refJointOrder().size());
 
   while (m_running)
@@ -98,7 +82,7 @@ void MCControlNAO::control_thread()
     if (m_controller.running)
     {
       /**
-       * CONTROL stuff goes here
+       * CONTROL loop
        **/
 
       // LOG_INFO("[Control] Running controller");
@@ -113,10 +97,8 @@ void MCControlNAO::control_thread()
           const auto& jname = m_controller.robot().refJointOrder()[i];
           // XXX can we use double precision on fastgetset_dcm side?
           angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
-          //LOG_INFO("setting " << jname << " = " << angles[i]);
+          // LOG_INFO("setting " << jname << " = " << angles[i]);
         }
-
-        // LOG_INFO("[Control] Sending to robot");
 
         // WARNING
         // Sending actuator commands to the fastgetset_dcm module,
@@ -153,7 +135,7 @@ void MCControlNAO::handleSensors()
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
       qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value"]];
-      //LOG_INFO(ref_joint_order[i] << " = " << qIn[i]);
+      // LOG_INFO(ref_joint_order[i] << " = " << qIn[i]);
     }
     // SENSORS SPECIFIC TO NAO ROBOT
     if (m_controller.robot().name() == "nao")
@@ -234,11 +216,7 @@ void MCControlNAO::servo(const bool state)
     if (!m_controller.running)
     {
       std::vector<float> angles;
-      //angles.arraySetSize(m_controller.robot().refJointOrder().size());
       angles.resize(m_controller.robot().refJointOrder().size());
-      // XXX improve once GlobalController improvements are merged
-      // If controller is not running, send actual joint values to robot
-      // so that servo on starts at correct values
 
       for (size_t i = 0; i < m_controller.robot().encoderValues().size(); ++i)
       {

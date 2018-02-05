@@ -22,17 +22,11 @@ add_definitions(-std=gnu++11)
 # Do not treat warnings as errors
 set(CXX_DISABLE_WERROR 1)
 
-## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  std_msgs
-  naoqi_libqi
-  naoqi_libqicore
-)
 search_for_eigen()
 
+add_required_dependency(naoqi_libqi)
+add_required_dependency(naoqi_libqicore)
 add_required_dependency(mc_rtc)
-include_directories(${catkin_INCLUDE_DIRS})
 add_subdirectory(src)
 
 setup_project_finalize()

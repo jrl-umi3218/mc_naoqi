@@ -1,5 +1,6 @@
 #include "MCControlNAO.h"
-#include <iostream>
+#include <mc_control/mc_global_controller.h>
+
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <mc_rtc/config.h>
@@ -53,11 +54,11 @@ namespace
     args >> jn;
     if (controller.robot().hasJoint(jn))
     {
-      std::cout << jn << ": " << controller.robot().mbc().q[controller.robot().jointIndexByName(jn)][0] << std::endl;
+      LOG_INFO(jn << ": " << controller.robot().mbc().q[controller.robot().jointIndexByName(jn)][0]);
     }
     else
     {
-      std::cout << "No joint named " << jn << " in the robot" << std::endl;
+      LOG_ERROR("No joint named " << jn << " in the robot");
     }
     return true;
 
@@ -201,18 +202,25 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  std::thread t([](){
-      ros::Rate r(100);
+  mc_nao::MCControlNAO mc_control_nao(host, controller);
+
+  std::thread spin_th;
+#ifdef MC_RTC_HAS_ROS
+  spin_th = std::thread([](){
+      ros::Rate r(30);
       while(ros::ok())
       {
         ros::spinOnce();
         r.sleep();
       }
     });
-  mc_nao::MCControlNAO mc_control_nao(host, controller);
   std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
   th.join();
-  t.join();
+  spin_th.join();
+#else
+  std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
+  th.join();
+#endif
 
   return 0;
 }
