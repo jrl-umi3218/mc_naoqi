@@ -6,6 +6,7 @@
 #include <mc_rtc/config.h>
 #include <mc_rtc/logging.h>
 
+#include <mc_rtc/ros.h>
 #include <ros/ros.h>
 
 namespace po = boost::program_options;
@@ -175,6 +176,8 @@ void input_thread(MCControlNAO & controlNAO)
 }
 int main(int argc, char **argv)
 {
+  auto nh = mc_rtc::ROSBridge::get_node_handle();
+
   std::string conf_file = mc_rtc::CONF_PATH;
   std::string host = "nao";
   po::options_description desc("MCControlNAO options");
