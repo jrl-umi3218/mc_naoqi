@@ -21,16 +21,16 @@ namespace mc_control
   class MCGlobalController;
 } /* mc_control */
 
-namespace mc_nao
+namespace mc_rtc_naoqi
 {
 /**
  * @brief Control interface for NAO and PEPPER robots
  */
-class MCControlNAO
+class MCControlNAOqi
 {
  public:
-  MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller);
-  virtual ~MCControlNAO();
+  MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port);
+  virtual ~MCControlNAOqi();
 
   bool running();
 

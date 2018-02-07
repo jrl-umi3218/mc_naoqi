@@ -1,4 +1,4 @@
-#include "MCControlNAO.h"
+#include "MCControlNAOqi.h"
 
 // mc_rtc
 #include <mc_control/mc_global_controller.h>
@@ -8,21 +8,21 @@
 #include <chrono>
 #include <memory>
 
-namespace mc_nao
+namespace mc_rtc_naoqi
 {
-MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller)
+MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port = 9559)
     : m_controller(controller),
       m_timeStep(static_cast<unsigned int>(1000 * controller.timestep())),
       m_running(true),
       iter_since_start(0),
       host(host),
-      portControl(9559)
+      portControl(port)
 {
   m_controller.running = false;
   LOG_INFO("timestep : " << controller.timestep());
   LOG_INFO("m_timeStep : " << m_timeStep);
 
-  LOG_INFO("MCControlNAO: Connecting to " << m_controller.robot().name() << " robot on address " << host << ":"
+  LOG_INFO("MCControlNAOqi: Connecting to " << m_controller.robot().name() << " robot on address " << host << ":"
                                           << portControl);
 
   // Create Naoqi session
@@ -55,12 +55,12 @@ MCControlNAO::MCControlNAO(const std::string& host, mc_control::MCGlobalControll
   m_controller.setSensorPosition(Eigen::Vector3d::Zero());
 
   qIn.resize(m_controller.robot().refJointOrder().size());
-  control_th = std::thread(std::bind(&MCControlNAO::control_thread, this));
-  sensor_th = std::thread(std::bind(&MCControlNAO::handleSensors, this));
+  control_th = std::thread(std::bind(&MCControlNAOqi::control_thread, this));
+  sensor_th = std::thread(std::bind(&MCControlNAOqi::handleSensors, this));
 }
 
-MCControlNAO::~MCControlNAO() { control_th.join(); }
-void MCControlNAO::control_thread()
+MCControlNAOqi::~MCControlNAOqi() { control_th.join(); }
+void MCControlNAOqi::control_thread()
 {
   LOG_INFO("[Control] Waiting for sensor data");
   std::unique_lock<std::mutex> lk(control_mut);
@@ -118,10 +118,10 @@ void MCControlNAO::control_thread()
       }
     }
   }
-  LOG_INFO("MCControlNAO running thread stopped");
+  LOG_INFO("MCControlNAOqi running thread stopped");
 }
 
-void MCControlNAO::handleSensors()
+void MCControlNAOqi::handleSensors()
 {
   while (m_running)
   {
@@ -205,7 +205,7 @@ void MCControlNAO::handleSensors()
   }
 }
 
-void MCControlNAO::servo(const bool state)
+void MCControlNAOqi::servo(const bool state)
 {
   m_servo = state;
 
@@ -240,16 +240,16 @@ void MCControlNAO::servo(const bool state)
   }
 }
 
-bool MCControlNAO::running() { return m_running; }
-void MCControlNAO::start()
+bool MCControlNAOqi::running() { return m_running; }
+void MCControlNAOqi::start()
 {
   m_controller.init(qIn);
   m_controller.running = true;
 }
-void MCControlNAO::stop()
+void MCControlNAOqi::stop()
 {
   m_controller.running = false;
   LOG_INFO("Controller Stopped");
 }
-mc_control::MCGlobalController& MCControlNAO::controller() { return m_controller; }
+mc_control::MCGlobalController& MCControlNAOqi::controller() { return m_controller; }
 } /* mc_nao */

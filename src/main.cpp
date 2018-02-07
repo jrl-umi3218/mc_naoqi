@@ -1,4 +1,4 @@
-#include "MCControlNAO.h"
+#include "MCControlNAOqi.h"
 #include <mc_control/mc_global_controller.h>
 
 #include <boost/program_options.hpp>
@@ -10,7 +10,7 @@
 #include <ros/ros.h>
 
 namespace po = boost::program_options;
-using namespace mc_nao;
+using namespace mc_rtc_naoqi;
 
 namespace
 {
@@ -117,7 +117,7 @@ namespace
   };
 }
 
-void input_thread(MCControlNAO & controlNAO)
+void input_thread(MCControlNAOqi & controlNAO)
 {
   while(controlNAO.running())
   {
@@ -180,14 +180,16 @@ int main(int argc, char **argv)
 
   std::string conf_file = mc_rtc::CONF_PATH;
   std::string host = "nao";
-  po::options_description desc("MCControlNAO options");
+  unsigned int port;
+  po::options_description desc("MCControlNAOqi options");
   desc.add_options()
     ("help", "display help message")
     ("host,h", po::value<std::string>(&host)->default_value("nao"), "connection host")
+    ("port,p", po::value<unsigned int>(&port)->default_value(9559), "connection port")
     ("conf,f", po::value<std::string>(&conf_file)->default_value(mc_rtc::CONF_PATH), "configuration file");
 
 
-  LOG_INFO("MCControlNAO - Using conf: " << conf_file);
+  LOG_INFO("MCControlNAOqi - Using conf: " << conf_file);
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
@@ -201,11 +203,11 @@ int main(int argc, char **argv)
   mc_control::MCGlobalController controller(conf_file);
   if(controller.robot().name() != "nao" && controller.robot().name() != "pepper")
   {
-    LOG_ERROR("MCControlNAO: This program can only handle nao and pepper at the moment");
+    LOG_ERROR("MCControlNAOqi: This program can only handle nao and pepper at the moment");
     return 1;
   }
 
-  mc_nao::MCControlNAO mc_control_nao(host, controller);
+  MCControlNAOqi mc_control_nao(controller, host, port);
 
   std::thread spin_th;
 #ifdef MC_RTC_HAS_ROS

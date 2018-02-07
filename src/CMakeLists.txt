@@ -1,17 +1,17 @@
 set ( SOURCES
  main.cpp
- MCControlNAO.cpp
+ MCControlNAOqi.cpp
 )
 
 set ( HEADERS
- MCControlNAO.h
+ MCControlNAOqi.h
 )
 
-add_executable( mc_rtc_naoqi_ros ${SOURCES} ${HEADERS})
-target_link_libraries( mc_rtc_naoqi_ros 
+add_executable( mc_rtc_naoqi ${SOURCES} ${HEADERS})
+target_link_libraries( mc_rtc_naoqi
   ${Boost_LIBRARIES}
   )
-pkg_config_use_dependency(mc_rtc_naoqi_ros mc_rtc)
-pkg_config_use_dependency(mc_rtc_naoqi_ros naoqi_libqi)
-pkg_config_use_dependency(mc_rtc_naoqi_ros naoqi_libqicore)
+pkg_config_use_dependency(mc_rtc_naoqi mc_rtc)
+pkg_config_use_dependency(mc_rtc_naoqi naoqi_libqi)
+pkg_config_use_dependency(mc_rtc_naoqi naoqi_libqicore)
 
