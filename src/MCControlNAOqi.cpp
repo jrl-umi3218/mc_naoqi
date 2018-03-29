@@ -48,7 +48,8 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
   for (size_t i = 0; i < sensorsOrder.size(); i++)
   {
     // LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
-    sensorOrderMap[sensorsOrder[i]] = i;
+    const auto& sensorName = sensorsOrder[i];
+    sensorOrderMap[sensorName] = i;
   }
 
   m_controller.setSensorOrientation(Eigen::Quaterniond::Identity());
@@ -95,7 +96,6 @@ void MCControlNAOqi::control_thread()
         for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i)
         {
           const auto& jname = m_controller.robot().refJointOrder()[i];
-          // XXX can we use double precision on fastgetset_dcm side?
           angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
           // LOG_INFO("setting " << jname << " = " << angles[i]);
         }
@@ -134,39 +134,25 @@ void MCControlNAOqi::handleSensors()
     const auto& ref_joint_order = m_controller.robot().refJointOrder();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
-      qIn[i] = sensors[sensorOrderMap["Device/SubDeviceList/" + ref_joint_order[i] + "/Position/Sensor/Value"]];
+      const auto& jname = ref_joint_order[i];
+      qIn[i] = sensors[sensorOrderMap["Encoder" + jname]];
       // LOG_INFO(ref_joint_order[i] << " = " << qIn[i]);
     }
+
+    accIn(0) = sensors[sensorOrderMap["AccelerometerX"]];
+    accIn(1) = sensors[sensorOrderMap["AccelerometerY"]];
+    accIn(2) = sensors[sensorOrderMap["AccelerometerZ"]];
+    // LOG_INFO("Accelerometer: " << accIn);
+
+    rateIn(0) = sensors[sensorOrderMap["GyroscopeX"]];
+    rateIn(1) = sensors[sensorOrderMap["GyroscopeY"]];
+    rateIn(2) = sensors[sensorOrderMap["GyroscopeZ"]];
+
     // SENSORS SPECIFIC TO NAO ROBOT
     if (m_controller.robot().name() == "nao")
     {
-      accIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerX/Sensor/Value"]];
-      accIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerY/Sensor/Value"]];
-      accIn(2) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/AccelerometerZ/Sensor/Value"]];
-      // LOG_INFO("Accelerometer: " << accIn);
-
-      rateIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeX/Sensor/Value"]];
-      rateIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeY/Sensor/Value"]];
-      rateIn(2) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensor/GyroscopeZ/Sensor/Value"]];
-
-      double LFsrTOTAL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/TotalWeight/Sensor/Value"]];
-      double RFsrTOTAL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/TotalWeight/Sensor/Value"]];
-
-      // Other available force measurements. Not used for the moment {
-      // // Get The Left Foot Force Sensor Values
-      // double LFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontLeft/Sensor/Value"]];
-      // double LFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/FrontRight/Sensor/Value"]];
-      // double LFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearLeft/Sensor/Value"]];
-      // double LFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/LFoot/FSR/RearRight/Sensor/Value"]];
-      // // LOG_INFO("Left FSR [Kg] " << LFsrFL << LFsrFR << LFsrBL << LFsrBR);
-
-      // // Get The Right Foot Force Sensor Values
-      // double RFsrFL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontLeft/Sensor/Value"]];
-      // double RFsrFR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/FrontRight/Sensor/Value"]];
-      // double RFsrBL = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearLeft/Sensor/Value"]];
-      // double RFsrBR = sensors[sensorOrderMap["Device/SubDeviceList/RFoot/FSR/RearRight/Sensor/Value"]];
-      // LOG_INFO("Left FSR [Kg] " << RFsrFL << RFsrFR << RFsrBL << RFsrBR);
-      // }
+      double LFsrTOTAL = sensors[sensorOrderMap["LF_FSR_TotalWeight"]];
+      double RFsrTOTAL = sensors[sensorOrderMap["RF_FSR_TotalWeight"]];
 
       std::map<std::string, sva::ForceVecd> wrenches;
       wrenches["LF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
@@ -176,17 +162,8 @@ void MCControlNAOqi::handleSensors()
     // SENSORS SPECIFIC TO PEPPER
     else if (m_controller.robot().name() == "pepper")
     {
-      accIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensorBase/AccelerometerX/Sensor/Value"]];
-      accIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensorBase/AccelerometerY/Sensor/Value"]];
-      accIn(2) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensorBase/AccelerometerZ/Sensor/Value"]];
-      // LOG_INFO("Accelerometer: " << accIn);
-
-      rateIn(0) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensorBase/GyroscopeX/Sensor/Value"]];
-      rateIn(1) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensorBase/GyroscopeY/Sensor/Value"]];
-      rateIn(2) = sensors[sensorOrderMap["Device/SubDeviceList/InertialSensorBase/GyroscopeZ/Sensor/Value"]];
     }
 
-    // LOG_INFO("Gyrometer: " << rateIn);
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
     m_controller.setEncoderValues(qIn);
@@ -220,9 +197,8 @@ void MCControlNAOqi::servo(const bool state)
 
       for (size_t i = 0; i < m_controller.robot().encoderValues().size(); ++i)
       {
-        // XXX can we use double precision on fastgetset_dcm side?
         angles[i] = static_cast<float>(m_controller.robot().encoderValues()[i]);
-        LOG_INFO("setting " << m_controller.robot().refJointOrder()[i] << " = " << angles[i]);
+        // LOG_INFO("setting " << m_controller.robot().refJointOrder()[i] << " = " << angles[i]);
       }
       al_fastdcm.call<void>("setJointAngles", angles);
     }
