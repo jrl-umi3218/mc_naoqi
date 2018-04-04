@@ -47,7 +47,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
   std::vector<std::string> sensorsOrder = al_fastdcm.call<std::vector<std::string>>("getSensorsOrder");
   for (size_t i = 0; i < sensorsOrder.size(); i++)
   {
-    // LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
+    LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
     const auto& sensorName = sensorsOrder[i];
     sensorOrderMap[sensorName] = i;
   }
@@ -89,8 +89,7 @@ void MCControlNAOqi::control_thread()
       // LOG_INFO("[Control] Running controller");
       if (m_controller.run())
       {
-        // FIXME Fill t
-        double t = 0.;  // in nano second
+        double t = 0.;  // get latest QP result
         const mc_solver::QPResultMsg& res = m_controller.send(t);
 
         for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i)
@@ -136,7 +135,7 @@ void MCControlNAOqi::handleSensors()
     {
       const auto& jname = ref_joint_order[i];
       qIn[i] = sensors[sensorOrderMap["Encoder" + jname]];
-      // LOG_INFO(ref_joint_order[i] << " = " << qIn[i]);
+      // LOG_INFO(jname << " = " << qIn[i]);
     }
 
     accIn(0) = sensors[sensorOrderMap["AccelerometerX"]];
