@@ -111,7 +111,7 @@ namespace
     {"move_com", std::bind(&move_com, std::placeholders::_1, std::placeholders::_2)},
     {"play_next_stance", std::bind(&play_next_stance, std::placeholders::_1, std::placeholders::_2)},
     {"hs", std::bind(&GoToHalfSitPose, std::placeholders::_1, std::placeholders::_2)},
-    // {"cc", std::bind(&ChangeController, std::placeholders::_1, std::placeholders::_2)},
+    {"cc", std::bind(&ChangeController, std::placeholders::_1, std::placeholders::_2)},
     {"send_msg", std::bind(&send_msg, std::placeholders::_1, std::placeholders::_2)},
     {"send_recv_msg", std::bind(&send_recv_msg, std::placeholders::_1, std::placeholders::_2)}
   };

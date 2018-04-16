@@ -161,6 +161,14 @@ void MCControlNAOqi::handleSensors()
     // SENSORS SPECIFIC TO PEPPER
     else if (m_controller.robot().name() == "pepper")
     {
+      accIn(0) = sensors[sensorOrderMap["AccelerometerX"]];
+      accIn(1) = sensors[sensorOrderMap["AccelerometerY"]];
+      accIn(2) = sensors[sensorOrderMap["AccelerometerZ"]];
+      // LOG_INFO("Accelerometer: " << accIn);
+
+      rateIn(0) = sensors[sensorOrderMap["GyroscopeX"]];
+      rateIn(1) = sensors[sensorOrderMap["GyroscopeY"]];
+      rateIn(2) = sensors[sensorOrderMap["GyroscopeZ"]];
     }
 
     m_controller.setSensorAcceleration(accIn);
@@ -220,10 +228,20 @@ void MCControlNAOqi::start()
 {
   m_controller.init(qIn);
   m_controller.running = true;
+  if (m_controller.robot().name() == "pepper"){
+    al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
+    al_fastdcm.call<void>("setWheelsStiffness", 1.0);
+    al_fastdcm.call<void>("changeLedColor", 0.0, 1.0, 0.0);
+  }
 }
 void MCControlNAOqi::stop()
 {
   m_controller.running = false;
+  if (m_controller.robot().name() == "pepper"){
+    al_fastdcm.call<void>("changeLedColor", 1.0, 1.0, 1.0);
+    al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
+    al_fastdcm.call<void>("setWheelsStiffness", 0.0);
+  }
   LOG_INFO("Controller Stopped");
 }
 mc_control::MCGlobalController& MCControlNAOqi::controller() { return m_controller; }
