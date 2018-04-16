@@ -6,8 +6,8 @@
 
 #include <Eigen/Core>
 
-#include <qi/session.hpp>
 #include <qi/anyobject.hpp>
+#include <qi/session.hpp>
 
 namespace AL
 {
@@ -18,7 +18,7 @@ class ALPreferenceManagerProxy;
 
 namespace mc_control
 {
-  class MCGlobalController;
+class MCGlobalController;
 } /* mc_control */
 
 namespace mc_rtc_naoqi
@@ -56,7 +56,14 @@ class MCControlNAOqi
   mc_control::MCGlobalController& controller();
 
  private:
+  /**
+   * @brief Sends mc_rtc controller commands to the robot.
+   */
   void control_thread();
+  /**
+   * @brief Retrieves robot sensor values, and provide them to
+   * MCGlobalController
+   */
   void handleSensors();
 
  private:
@@ -86,12 +93,10 @@ class MCControlNAOqi
   unsigned int portControl;
 
   /* Handles communication with NAO */
-  //boost::shared_ptr<AL::ALBroker> al_broker;
   qi::SessionPtr al_broker;
-  //std::unique_ptr<AL::ALPreferenceManagerProxy> al_preference;
 
   /*! Custom DCM module for fast access to NAO memory */
-  //std::unique_ptr<AL::ALProxy> al_fastdcm;
+  // std::unique_ptr<AL::ALProxy> al_fastdcm;
   qi::AnyObject al_fastdcm;
 
   std::thread control_th;

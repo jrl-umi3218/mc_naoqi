@@ -10,7 +10,8 @@
 
 namespace mc_rtc_naoqi
 {
-MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port = 9559)
+MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host,
+                               const unsigned int port = 9559)
     : m_controller(controller),
       m_timeStep(static_cast<unsigned int>(1000 * controller.timestep())),
       m_running(true),
@@ -23,7 +24,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
   LOG_INFO("m_timeStep : " << m_timeStep);
 
   LOG_INFO("MCControlNAOqi: Connecting to " << m_controller.robot().name() << " robot on address " << host << ":"
-                                          << portControl);
+                                            << portControl);
 
   // Create Naoqi session
   al_broker = qi::makeSession();
@@ -228,7 +229,8 @@ void MCControlNAOqi::start()
 {
   m_controller.init(qIn);
   m_controller.running = true;
-  if (m_controller.robot().name() == "pepper"){
+  if (m_controller.robot().name() == "pepper")
+  {
     al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
     al_fastdcm.call<void>("setWheelsStiffness", 1.0);
     al_fastdcm.call<void>("changeLedColor", 0.0, 1.0, 0.0);
@@ -237,7 +239,8 @@ void MCControlNAOqi::start()
 void MCControlNAOqi::stop()
 {
   m_controller.running = false;
-  if (m_controller.robot().name() == "pepper"){
+  if (m_controller.robot().name() == "pepper")
+  {
     al_fastdcm.call<void>("changeLedColor", 1.0, 1.0, 1.0);
     al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
     al_fastdcm.call<void>("setWheelsStiffness", 0.0);
