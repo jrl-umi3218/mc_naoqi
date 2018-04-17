@@ -1,6 +1,17 @@
-# Create a executable named mc_rtc_nao
-# with the source file: main.cpp
-qi_create_bin(mc_rtc_nao main.cpp MCControlNAO.cpp MCControlNAOServices.cpp NAOModule.cpp)
-qi_use_lib(mc_rtc_nao ALCOMMON ALPROXIES)
-# qi_use_lib(mc_rtc_nao ALCOMMON)
-pkg_config_use_dependency(mc_rtc_nao mc_rtc)
+set ( SOURCES
+ main.cpp
+ MCControlNAOqi.cpp
+)
+
+set ( HEADERS
+ MCControlNAOqi.h
+)
+
+add_executable( mc_rtc_naoqi ${SOURCES} ${HEADERS})
+target_link_libraries( mc_rtc_naoqi
+  ${Boost_LIBRARIES}
+  )
+pkg_config_use_dependency(mc_rtc_naoqi mc_rtc)
+pkg_config_use_dependency(mc_rtc_naoqi naoqi_libqi)
+pkg_config_use_dependency(mc_rtc_naoqi naoqi_libqicore)
+

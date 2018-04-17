@@ -1,36 +1,48 @@
-mc_rtc_nao
-==
+# ROS package for `mc_rtc <-> naoqi` communication.
 
-This modules handles communication between Aldebaran's NAO robot and mc_rtc.
-
-Requirements
-==
-
-- mc_rtc
-- [naoqi c++ SDK](http://doc.aldebaran.com/2-1/dev/cpp/install_guide.html)
-- [nao_fastgetsetdcm](https://gite.lirmm.fr/atanguy/nao_fastgetsetdcm)
-
-How to build
-==
-
-First, you need to install the `nao_fastgetsetdcm` module on the NAO.
-This module is responsible for fast access to encoders and actuators.
-Follow the instructions on [nao_fastgetsetdcm](https://gite.lirmm.fr/atanguy/nao_fastgetsetdcm)
+Handles communication between `mc_rtc` and NAO/PEPPER robots.
 
 
-Then you need to build the control module, as follow.
-Fist create a toolchain (compilation environment for NAO).
+# Installation
 
-```qitoolchain create naoqi-sdk /path/to/cpp/sdk/toolchain.xml```
+## On the control computer
 
-Create a workspace, clone the project and build it using NAO sdk
+Instead of using NAOqi SDK, the communication with naoqi OS is based on [naoqi_libqi](http://wiki.ros.org/naoqi_libqi) and [naoqi_libqicore](http://wiki.ros.org/naoqi_libqicore) ros packages:
 
-```
-cd /path/to/workspace
-git clone <mc_rtc_nao.git>
-qibuild init
-qibuild configure -c naoqi-sdk mc_rtc_nao
-qibuild make -c naoqi-sdk mc_rtc_nao
+```sh
+sudo apt-get install ros-kinetic-naoqi-libqi
+sudo apt-get install ros-kinetic-naoqi-libqicore
 ```
 
+Then compile `mc_rtc_naoqi`.
 
+
+## On the robot
+
+Communication with the robot sensors and actuators is mananged using the embedded [DCM](http://doc.aldebaran.com/2-1/naoqi/sensors/dcm.html) module on the robot.
+To access its features, [nao_fastgetsetdcm](https://gite.lirmm.fr/atanguy/nao_fastgetsetdcm) needs to be installed and run on the robot.
+
+For PEPPER, see `topic/for_mc_rtc_naoqi_ros` in `nao_festgetsetdcm` repository (code needs to be updated to libqi use for NAO).
+
+# Usage
+
+```
+mc_rtc_naoqi -h <robot_hostname> -p <robot_port> -f <mc_rtc_configuration_file.conf>
+```
+
+## CLI Commands
+
+- `on` : servo on actuators
+- `off` : servo off actuators
+- `start` : starts `mc_rtc` controller
+- `stop` : stops `mc_rtc` controller
+- `hs` : go to half-sitting posture
+- `cc <controller name>` : change controller
+
+## ROS Services
+
+If `mc_rtc` was compiled with ROS support, then services will be available to interact with controllers. You can see the list of all services available with
+
+```sh
+rosservice list /mc_rtc
+```

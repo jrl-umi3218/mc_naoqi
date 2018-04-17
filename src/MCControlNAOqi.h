@@ -1,55 +1,73 @@
 #pragma once
 
-// mc_rtc
-#include <mc_control/mc_global_controller.h>
-
-// boost
-#include <boost/thread.hpp>
-#include <mutex>
 #include <condition_variable>
-
-// std
-#include <fstream>
+#include <mutex>
+#include <thread>
 
 #include <Eigen/Core>
 
-#include "NAOModule.h"
-#include "MCControlNAOServices.h"
-
-#include <alcommon/almodule.h>
-#include <alcommon/albroker.h>
+#include <qi/anyobject.hpp>
+#include <qi/session.hpp>
 
 namespace AL
 {
 class ALMotionProxy;
 class ALMemoryProxy;
 class ALPreferenceManagerProxy;
-}
+} /* AL */
 
-
-namespace mc_nao
+namespace mc_control
 {
+class MCGlobalController;
+} /* mc_control */
 
-class MCControlNAO
+namespace mc_rtc_naoqi
+{
+/**
+ * @brief Control interface for NAO and PEPPER robots
+ */
+class MCControlNAOqi
 {
  public:
-  MCControlNAO(const std::string& host, mc_control::MCGlobalController& controller, const mc_control::Configuration&);
-  virtual ~MCControlNAO();
+  MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port);
+  virtual ~MCControlNAOqi();
 
   bool running();
+
+  /**
+   * @brief Start the control loop
+   */
   void start();
+
+  /**
+   * @brief Stop the control loop
+   */
   void stop();
+
+  /**
+   * @brief Gradually increase the stiffness to max value
+   *
+   * @param state
+   *  true: Turn on the actuators
+   *  false: Turn off the actuators
+   */
   void servo(const bool state);
 
   mc_control::MCGlobalController& controller();
 
  private:
+  /**
+   * @brief Sends mc_rtc controller commands to the robot.
+   */
   void control_thread();
+  /**
+   * @brief Retrieves robot sensor values, and provide them to
+   * MCGlobalController
+   */
   void handleSensors();
 
  private:
   mc_control::MCGlobalController& m_controller;
-  MCControlNAOService m_service;
 
   /*! Timestep expressed in ms */
   unsigned int m_timeStep;
@@ -65,8 +83,6 @@ class MCControlNAO
   Eigen::Vector3d accIn;
   /*! Angular velocity */
   Eigen::Vector3d rateIn;
-  /*! Log file */
-  std::ofstream m_log;
   /*! Controller's iteration count*/
   unsigned int iter_since_start;
 
@@ -77,22 +93,16 @@ class MCControlNAO
   unsigned int portControl;
 
   /* Handles communication with NAO */
-  boost::shared_ptr<AL::ALBroker> al_broker;
-  boost::shared_ptr<NAOModule> nao_module;
-  /*! Gives high level access to actuators */
-  std::unique_ptr<AL::ALMotionProxy> al_motion;
-  std::unique_ptr<AL::ALPreferenceManagerProxy> al_preference;
-  /*! Gives access to nao memory (read force sensors...) */
-  std::unique_ptr<AL::ALMemoryProxy> al_memory;
+  qi::SessionPtr al_broker;
 
   /*! Custom DCM module for fast access to NAO memory */
-  std::unique_ptr<AL::ALProxy> al_fastdcm;
+  // std::unique_ptr<AL::ALProxy> al_fastdcm;
+  qi::AnyObject al_fastdcm;
 
   std::thread control_th;
   // Wait for sensor input before starting control
   std::condition_variable control_cv;
   std::mutex control_mut;
-
   std::thread sensor_th;
 
   // Maps sensor name to sensor index
