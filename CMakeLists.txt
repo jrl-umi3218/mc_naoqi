@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1.1)
 project(mc_rtc_naoqi)
 set(PROJECT_NAME mc_rtc_naoqi)
 set(PROJECT_DESCRIPTION mc_rtc_naoqi)
@@ -9,9 +9,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
 include(cmake/base.cmake)
-include(cmake/boost.cmake)
-include(cmake/eigen.cmake)
-include(cmake/pkg-config.cmake)
 
 setup_project()
 
@@ -22,11 +19,13 @@ add_definitions(-std=gnu++11)
 # Do not treat warnings as errors
 set(CXX_DISABLE_WERROR 1)
 
-search_for_eigen()
+find_package(Eigen3 REQUIRED)
+find_package(mc_rtc REQUIRED)
+find_package(Boost REQUIRED
+	COMPONENTS program_options)
 
 add_required_dependency(naoqi_libqi)
 add_required_dependency(naoqi_libqicore)
-add_required_dependency(mc_rtc)
 add_subdirectory(src)
 
 setup_project_finalize()
