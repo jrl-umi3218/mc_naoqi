@@ -77,6 +77,8 @@ class MCControlNAOqi
   /* Sensor information */
   /*! Encoder values */
   std::vector<double> qIn;
+  /*! ElectricCurrent values */
+  std::vector<double> tauIn;
   /*! Orientation sensor */
   Eigen::Vector3d rpyIn;
   /*! Accelerometer */
@@ -98,6 +100,7 @@ class MCControlNAOqi
   /*! Custom DCM module for fast access to NAO memory */
   // std::unique_ptr<AL::ALProxy> al_fastdcm;
   qi::AnyObject al_fastdcm;
+  qi::AnyObject al_tabletservice;
 
   std::thread control_th;
   // Wait for sensor input before starting control
@@ -107,6 +110,13 @@ class MCControlNAOqi
 
   // Maps sensor name to sensor index
   std::map<std::string, size_t> sensorOrderMap;
+  // Sensor values read from the memory
+  std::vector<float> sensors;
+  // total number of sensors
+  int numSensors;
+  // blinking timer
+  bool enableBlinking;
+  int msTillBlink;
 };
 
 } /* mc_nao */

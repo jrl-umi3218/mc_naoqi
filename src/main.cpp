@@ -174,6 +174,8 @@ void input_thread(MCControlNAOqi & controlNAO)
     }
   }
 }
+
+
 int main(int argc, char **argv)
 {
   auto nh = mc_rtc::ROSBridge::get_node_handle();
@@ -200,6 +202,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  srand (uint(time(NULL)));
   mc_control::MCGlobalController controller(conf_file);
   if(controller.robot().name() != "nao" && controller.robot().name() != "pepper")
   {
@@ -210,22 +213,22 @@ int main(int argc, char **argv)
   MCControlNAOqi mc_control_nao(controller, host, port);
 
   std::thread spin_th;
-#ifdef MC_RTC_HAS_ROS
-  spin_th = std::thread([](){
-      ros::Rate r(30);
-      while(ros::ok())
-      {
-        ros::spinOnce();
-        r.sleep();
-      }
-    });
-  std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
-  th.join();
-  spin_th.join();
-#else
-  std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
-  th.join();
-#endif
+  #ifdef MC_RTC_HAS_ROS
+    spin_th = std::thread([](){
+        ros::Rate r(30);
+        while(ros::ok())
+        {
+          ros::spinOnce();
+          r.sleep();
+        }
+      });
+    std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
+    th.join();
+    spin_th.join();
+  #else
+    std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
+    th.join();
+  #endif
 
   return 0;
 }
