@@ -26,8 +26,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
   LOG_INFO("MCControlNAOqi: Connecting to " << m_controller.robot().name()
                                             << " robot on address " << host
                                             << ":" << portControl);
-  // base speed transformation
-  tf << 12.5667, -6.79404, -2.55931, -12.5667, -6.79404, -2.55931, 0.0, 14.2857, -2.42857;
+  // led animation option
   enableBlinking = true;
   msTillBlink = rand() % 6000 + 1000;
 
@@ -48,11 +47,12 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
   }
   std::cout << "Connected" << std::endl;
 
+  // Connect to local robot modules
   al_fastdcm = al_broker->service("FastGetSetDCM");
   al_tabletservice = al_broker->service("ALTabletService");
 
+  // set tablet image
   al_tabletservice.call<void>("setBrightness", 1.0);
-  // show the image and don't hide
   al_tabletservice.call<void>("showImage", "http://198.18.0.1/apps/boot-config/tablet_screen.png");
 
   std::vector<std::string> sensorsOrder = al_fastdcm.call<std::vector<std::string>>("getSensorsOrder");
@@ -100,7 +100,6 @@ void MCControlNAOqi::control_thread()
   // m_running seems to be always true (what is it's role? threads?)
   while (m_running)
   {
-    // TODO: run it after if (m_controller.running)
     auto start = std::chrono::high_resolution_clock::now();
 
     if (m_controller.running)
@@ -112,7 +111,7 @@ void MCControlNAOqi::control_thread()
       // LOG_INFO("[Control] Running controller");
       if (m_controller.run())
       {
-        double t = 0.;  // get latest QP result // can I remove this int?
+        double t = 0.;  // get latest QP result
         const mc_solver::QPResultMsg& res = m_controller.send(t);
 
         for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i)
@@ -127,28 +126,14 @@ void MCControlNAOqi::control_thread()
         // in the same order as the robot module's ref_joint_order
         // Make sure that fastgetsetdcm joint order is the same!
         al_fastdcm.call<void>("setJointAngles", angles);
-
-        // update realRobot().posW from control
-        m_controller.realRobots().robot().posW(m_controller.robot().bodyPosW("base_link"));
-        m_controller.realRobots().robot().velW(m_controller.robot().bodyVelW("base_link"));
       }
 
       double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
       if (elapsed * 1000 > m_timeStep){
         LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << m_timeStep << " ms");
       }else{
-        // TODO: is it really a good idea to sleep here?
         std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
       }
-
-      if(enableBlinking){
-        msTillBlink -= int(m_timeStep + elapsed * 1000);
-        if(msTillBlink<=0){
-          al_fastdcm.call<void>("blink");
-          msTillBlink = rand() % 6000 + 1000;
-        }
-      }
-
     }
   }
   LOG_INFO("MCControlNAOqi running thread stopped");
@@ -212,6 +197,8 @@ void MCControlNAOqi::handleSensors()
       rateIn(0) = sensors[sensorOrderMap["GyroscopeX"]];
       rateIn(1) = sensors[sensorOrderMap["GyroscopeY"]];
       rateIn(2) = sensors[sensorOrderMap["GyroscopeZ"]];
+
+      // TODO: add bumpers and other Pepper sensors
     }
 
     m_controller.setSensorAcceleration(accIn);
@@ -222,13 +209,21 @@ void MCControlNAOqi::handleSensors()
     // Start control only once the robot state has been read at least once
     control_cv.notify_one();
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
-    if (elapsed * 1000 > m_timeStep)
-    {
+    if (elapsed * 1000 > m_timeStep){
       LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << m_timeStep << " ms");
     }
-    else
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
+    else{
+      // blink if there is spare time after sensors reading until next DCM cicle
+      auto startExtraAnimation = std::chrono::high_resolution_clock::now();
+      if(enableBlinking){
+        msTillBlink -= int(m_timeStep + elapsed * 1000);
+        if(msTillBlink<=0){
+          al_fastdcm.call<void>("blink");
+          msTillBlink = rand() % 6000 + 1000;
+        }
+      }
+      double elapsedExtraAnimation = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startExtraAnimation).count();
+      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000) - static_cast<unsigned int>(startExtraAnimation * 1000)));
     }
   }
 }
@@ -260,10 +255,17 @@ void MCControlNAOqi::servo(const bool state)
       al_fastdcm.call<void>("setStiffness", i / 100.);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+    // same for the stiffness of the wheels
+    for (int i = 1; i <= 100; ++i)
+    {
+      al_fastdcm.call<void>("setWheelsStiffness", i / 100.);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
   else
   {  // Servo OFF
     al_fastdcm.call<void>("setStiffness", 0.);
+    al_fastdcm.call<void>("setWheelsStiffness", 0.0);
   }
 }
 
@@ -287,11 +289,6 @@ void MCControlNAOqi::start()
     al_fastdcm.call<void>("isetLeds", "earsLeds", 1.0);
 
     al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
-    for (int i = 1; i <= 100; ++i)
-    {
-      al_fastdcm.call<void>("setWheelsStiffness", i / 100.);
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
   }
 }
 
@@ -300,7 +297,6 @@ void MCControlNAOqi::stop()
   m_controller.running = false;
   if (m_controller.robot().name() == "pepper")
   {
-    al_fastdcm.call<void>("setWheelsStiffness", 0.0);
     al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
 
     al_fastdcm.call<void>("setLeds", "eyesCenter", 1.0f, 1.0f, 1.0f);
