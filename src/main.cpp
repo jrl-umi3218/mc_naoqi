@@ -117,9 +117,9 @@ namespace
   };
 }
 
-void input_thread(MCControlNAOqi & controlNAO)
+void input_thread(MCControlNAOqi & controlNAOqi)
 {
-  while(controlNAO.running())
+  while(controlNAOqi.running())
   {
     std::string ui;
     std::getline(std::cin, ui);
@@ -129,17 +129,17 @@ void input_thread(MCControlNAOqi & controlNAO)
     ss >> token;
     if(token == "stop")
     {
-      controlNAO.controller().GoToHalfSitPose();
       LOG_INFO("Stopping experiment")
-      controlNAO.stop();
+      controlNAOqi.stop();
+      LOG_INFO("Experiment stopped")
     }
     else if(token == "off")
     {
-      controlNAO.servo(false);
+      controlNAOqi.servo(false);
     }
     else if(token == "on")
     {
-      controlNAO.servo(true);
+      controlNAOqi.servo(true);
     }
     else if(token == "cc")
     {
@@ -147,13 +147,14 @@ void input_thread(MCControlNAOqi & controlNAO)
       ss >> controller_name;
 
       // Stop control
-      controlNAO.stop();
-      controlNAO.controller().running = false;
-      controlNAO.controller().EnableController(controller_name);
+      controlNAOqi.stop();
+      controlNAOqi.controller().running = false;
+      controlNAOqi.controller().EnableController(controller_name);
     }
     else if(token == "start")
     {
-      controlNAO.start();
+      LOG_INFO("Starting experiment")
+      controlNAOqi.start();
     }
     else if(cli_fn.count(token))
     {
@@ -162,7 +163,7 @@ void input_thread(MCControlNAOqi & controlNAO)
       boost::algorithm::trim(rem);
       std::stringstream ss2;
       ss2 << rem;
-      bool ret = cli_fn[token](controlNAO.controller(), ss2);
+      bool ret = cli_fn[token](controlNAOqi.controller(), ss2);
       if (!ret)
       {
         LOG_ERROR("Failed to invoke the previous command");
@@ -174,12 +175,12 @@ void input_thread(MCControlNAOqi & controlNAO)
     }
   }
 }
+
+
 int main(int argc, char **argv)
 {
-  auto nh = mc_rtc::ROSBridge::get_node_handle();
-
   std::string conf_file = mc_rtc::CONF_PATH;
-  std::string host = "nao";
+  std::string host;
   unsigned int port;
   po::options_description desc("MCControlNAOqi options");
   desc.add_options()
@@ -200,32 +201,35 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  // radom seed for eye blinking
+  srand (uint(time(NULL)));
+
+  // Create interface object
   mc_control::MCGlobalController controller(conf_file);
   if(controller.robot().name() != "nao" && controller.robot().name() != "pepper")
   {
     LOG_ERROR("MCControlNAOqi: This program can only handle nao and pepper at the moment");
     return 1;
   }
-
-  MCControlNAOqi mc_control_nao(controller, host, port);
+  MCControlNAOqi mc_control_naoqi(controller, host, port);
 
   std::thread spin_th;
-#ifdef MC_RTC_HAS_ROS
-  spin_th = std::thread([](){
-      ros::Rate r(30);
-      while(ros::ok())
-      {
-        ros::spinOnce();
-        r.sleep();
-      }
-    });
-  std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
-  th.join();
-  spin_th.join();
-#else
-  std::thread th(std::bind(&input_thread, std::ref(mc_control_nao)));
-  th.join();
-#endif
+  #ifdef MC_RTC_HAS_ROS
+    spin_th = std::thread([](){
+        ros::Rate r(30);
+        while(ros::ok())
+        {
+          ros::spinOnce();
+          r.sleep();
+        }
+      });
+    std::thread th(std::bind(&input_thread, std::ref(mc_control_naoqi)));
+    th.join();
+    spin_th.join();
+  #else
+    std::thread th(std::bind(&input_thread, std::ref(mc_control_naoqi)));
+    th.join();
+  #endif
 
   return 0;
 }
