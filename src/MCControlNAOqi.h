@@ -128,6 +128,9 @@ class MCControlNAOqi
   // note: enabling ALAutonomousBlinking seems to work in interactive mode only
   bool enableBlinking;
   int msTillBlink;
+
+  /*! Mobile base control (Pepper only) */
+  bool moveMobileBase = true;
 };
 
 } /* mc_nao */

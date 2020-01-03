@@ -201,6 +201,16 @@ void MCControlNAOqi::handleSensors()
       for(const auto & w : wrenches){
         m_controller.controller().realRobot().forceSensor(w.first).wrench(w.second);
       }
+
+      // Switch off the wheels when bumpers detect contact
+      if(moveMobileBase){
+        if(sensors[sensorOrderMap["BumperFrontLeft"]] == 1.0 ||
+            sensors[sensorOrderMap["BumperFrontRight"]] == 1.0 ||
+              sensors[sensorOrderMap["BumperBack"]] == 1.0){
+                al_fastdcm.call<void>("setWheelsStiffness", 0.);
+                LOG_WARNING("[Sensors] Bumpers: switched off wheels")
+        }
+      }
     }
 
     // Communicate sensor readings to controller
@@ -298,7 +308,7 @@ void MCControlNAOqi::servo(const bool state)
     for (int i = 1; i <= 100; ++i)
     {
       al_fastdcm.call<void>("setStiffness", i / 100.);
-      if(m_controller.robot().name() == "pepper"){
+      if(m_controller.robot().name() == "pepper" && moveMobileBase){
         al_fastdcm.call<void>("setWheelsStiffness", i / 100.);
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -314,7 +324,9 @@ void MCControlNAOqi::servo(const bool state)
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     if(m_controller.robot().name() == "pepper"){
-      al_fastdcm.call<void>("setWheelsStiffness", 0.);
+      if(moveMobileBase){
+        al_fastdcm.call<void>("setWheelsStiffness", 0.);
+      }
       // Hide tablet image
       al_tabletservice.call<void>("hideImage");
     }
