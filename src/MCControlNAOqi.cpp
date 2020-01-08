@@ -22,76 +22,96 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
   m_controller.running = false;
   LOG_INFO("timestep : " << controller.timestep());
   LOG_INFO("m_timeStep : " << m_timeStep);
-  LOG_INFO("MCControlNAOqi: Connecting to " << m_controller.robot().name()
-                                            << " robot on address " << host
-                                            << ":" << portControl);
 
   // led animation option
   enableBlinking = true;
   msTillBlink = rand() % 6000 + 1000;
 
   // Create Naoqi session
-  al_broker = qi::makeSession();
-  // Try to connect with TCP to robot
-  try{
-    std::stringstream strstr;
-    strstr << "tcp://" << host << ":" << portControl;
-    std::cout << "Connecting to " << host << ":" << portControl << std::endl;
-    al_broker->connect(strstr.str()).wait();
-  }
-  catch (const std::exception& e){
-    std::cout << "Cannot connect to session: " << e.what() << std::endl;
-    al_broker->close();
-  }
-  std::cout << "Connected" << std::endl;
+  if(host != "simulation"){
+    al_broker = qi::makeSession();
+    // Try to connect with TCP to robot
+    LOG_INFO("MCControlNAOqi: Connecting to " << m_controller.robot().name()
+                                              << " robot on address " << host
+                                              << ":" << portControl);
+    try{
+      std::stringstream strstr;
+      strstr << "tcp://" << host << ":" << portControl;
+      std::cout << "Connecting to " << host << ":" << portControl << std::endl;
+      al_broker->connect(strstr.str()).wait();
+    }
+    catch (const std::exception& e){
+      std::cout << "Cannot connect to session: " << e.what() << std::endl;
+      al_broker->close();
+    }
+    std::cout << "Connected" << std::endl;
 
-  // Connect to local robot modules
-  al_fastdcm = al_broker->service("FastGetSetDCM");
-  al_launcher = al_broker->service("ALLauncher");
-  if (m_controller.robot().name() == "pepper"){
-    al_tabletservice = al_broker->service("ALTabletService");
-  }
+    // Connect to local robot modules
+    al_fastdcm = al_broker->service("FastGetSetDCM");
+    al_launcher = al_broker->service("ALLauncher");
+    if (m_controller.robot().name() == "pepper"){
+      al_tabletservice = al_broker->service("ALTabletService");
+    }
 
-  // Order of sensors readings
-  std::vector<std::string> sensorsOrder = al_fastdcm.call<std::vector<std::string>>("getSensorsOrder");
-  for (size_t i = 0; i < sensorsOrder.size(); i++)
-  {
-    LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
-    const auto& sensorName = sensorsOrder[i];
-    sensorOrderMap[sensorName] = i;
+    // Order of sensors readings
+    std::vector<std::string> sensorsOrder = al_fastdcm.call<std::vector<std::string>>("getSensorsOrder");
+    for (size_t i = 0; i < sensorsOrder.size(); i++)
+    {
+      LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
+      const auto& sensorName = sensorsOrder[i];
+      sensorOrderMap[sensorName] = i;
+    }
+
+    // Check that actuator order is the same everywhere
+    std::vector<std::string> jointsOrder = al_fastdcm.call<std::vector<std::string>>("getJointOrder");
+    for(unsigned int i = 0; i<m_controller.robot().refJointOrder().size();i++){
+      if(m_controller.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
+        LOG_WARNING(m_controller.robot().refJointOrder()[i] << "!=" << jointsOrder[i] << "!=" << sensorsOrder[i].substr(std::string("Encoder").length()))
+        LOG_ERROR_AND_THROW(std::runtime_error, "Joints reference order does not match! Check the definitions in the remote and local robot modules.")
+      }
+    }
+    LOG_INFO("Joints reference order check: OK")
+  }else{
+    LOG_WARNING("Host is '" << host << "'. Running simulation only. No connection to real robot.")
   }
 
   // Initialize main robot position/orentation sensor data
   m_controller.setSensorOrientation(Eigen::Quaterniond::Identity());
   m_controller.setSensorPosition(Eigen::Vector3d::Zero());
 
-  // Check that actuator order is the same everywhere
-  std::vector<std::string> jointsOrder = al_fastdcm.call<std::vector<std::string>>("getJointOrder");
-  for(unsigned int i = 0; i<m_controller.robot().refJointOrder().size();i++){
-    if(m_controller.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
-      LOG_WARNING(m_controller.robot().refJointOrder()[i] << "!=" << jointsOrder[i] << "!=" << sensorsOrder[i].substr(std::string("Encoder").length()))
-      LOG_ERROR_AND_THROW(std::runtime_error, "Joints reference order does not match! Check the definitions in the remote and local robot modules.")
-    }
-  }
-  LOG_INFO("Joints reference order check: OK")
-
-  // Joints position sensor readings
-  qIn.resize(m_controller.robot().refJointOrder().size());
-  // Tau for now is just electric current sensor readings
-  tauIn.resize(m_controller.robot().refJointOrder().size());
-  // Allocate space for reading all sensors from the memory
-  numSensors = al_fastdcm.call<int>("numSensors");
-  sensors.resize(numSensors);
   // Control thread will run QP (every m_timeStep ms) and send result joint commands to robot
   control_th = std::thread(std::bind(&MCControlNAOqi::control_thread, this));
   // Sensor thread reads the sensor values (which can be used by observer to update real robot representation in controller)
-  sensor_th = std::thread(std::bind(&MCControlNAOqi::handleSensors, this));
+  if(host != "simulation"){
+    // Joints position sensor readings
+    qIn.resize(m_controller.robot().refJointOrder().size());
+    // Tau for now is just electric current sensor readings
+    tauIn.resize(m_controller.robot().refJointOrder().size());
+    // Allocate space for reading all sensors from the memory
+    numSensors = al_fastdcm.call<int>("numSensors");
+    sensors.resize(numSensors);
+    sensor_th = std::thread(std::bind(&MCControlNAOqi::handleSensors, this));
+  }else{
+    // running simulation only
+    auto & mbc = m_controller.robot().mbc();
+    const auto & rjo = m_controller.ref_joint_order();
+    for(const auto & jn : rjo){
+      if(m_controller.robot().hasJoint(jn)){
+        for(auto & qj : mbc.q[m_controller.robot().jointIndexByName(jn)]){
+          qIn.push_back(qj);
+        }
+      }
+    }
+    m_controller.setEncoderValues(qIn);
+  }
 }
 
 // Destructor
 MCControlNAOqi::~MCControlNAOqi() {
   // disconnect callback from DCM
-  al_fastdcm.call<void>("stopLoop");
+  if(host != "simulation"){
+    al_fastdcm.call<void>("stopLoop");
+  }
   // wait for control thread to finish
   control_th.join();
 }
@@ -99,10 +119,12 @@ MCControlNAOqi::~MCControlNAOqi() {
 
 void MCControlNAOqi::control_thread()
 {
-  LOG_INFO("[Control] Waiting for sensor data");
-  std::unique_lock<std::mutex> lk(control_mut);
-  control_cv.wait(lk);
-  LOG_INFO("[Control] Got sensor data, ready for control");
+  if(host != "simulation"){
+    LOG_INFO("[Control] Waiting for sensor data");
+    std::unique_lock<std::mutex> lk(control_mut);
+    control_cv.wait(lk);
+    LOG_INFO("[Control] Got sensor data, ready for control");
+  }
 
   std::vector<float> angles;
   angles.resize(m_controller.robot().refJointOrder().size());
@@ -131,7 +153,9 @@ void MCControlNAOqi::control_thread()
         }
 
         // Sending actuator commands to the fastgetset_dcm local module (running on the robot)
-        al_fastdcm.call<void>("setJointAngles", angles);
+        if(host != "simulation"){
+          al_fastdcm.call<void>("setJointAngles", angles);
+        }
       }
 
       double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
@@ -365,7 +389,7 @@ void MCControlNAOqi::start()
     LOG_INFO("[Control] Controller initialized with sensor data from the robot");
 
     m_controller.running = true;
-    if (m_controller.robot().name() == "pepper")
+    if (m_controller.robot().name() == "pepper" && host != "simulation")
     {
       al_fastdcm.call<void>("setLeds", "eyesCenter", 1.0f, 1.0f, 1.0f);
       al_fastdcm.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
@@ -380,7 +404,7 @@ void MCControlNAOqi::start()
 void MCControlNAOqi::stop()
 {
   m_controller.running = false;
-  if (m_controller.robot().name() == "pepper")
+  if (m_controller.robot().name() == "pepper" && host != "simulation")
   {
     al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
 
