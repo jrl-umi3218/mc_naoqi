@@ -129,24 +129,17 @@ void MCControlNAOqi::control_thread()
   std::vector<float> angles;
   angles.resize(m_controller.robot().refJointOrder().size());
 
-  while (m_running)
-  {
+  while (m_running){
     auto start = std::chrono::high_resolution_clock::now();
 
-    if (m_controller.running)
-    {
-      /**
-       * CONTROL loop
-       **/
-
+    if (m_controller.running){
+      /** CONTROL loop **/
       // LOG_INFO("[Control] Running controller");
-      if (m_controller.run())
-      {
+      if (m_controller.run()){
         double t = 0.;  // get latest QP result
         const mc_solver::QPResultMsg& res = m_controller.send(t);
 
-        for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i)
-        {
+        for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i){
           const auto& jname = m_controller.robot().refJointOrder()[i];
           angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
           // LOG_INFO("setting " << jname << " = " << angles[i]);
@@ -157,13 +150,12 @@ void MCControlNAOqi::control_thread()
           al_fastdcm.call<void>("setJointAngles", angles);
         }
       }
-
-      double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
-      if (elapsed * 1000 > m_timeStep){
-        LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << m_timeStep << " ms");
-      }else{
-        std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
-      }
+    }
+    double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
+    if (elapsed * 1000 > m_timeStep){
+      LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << m_timeStep << " ms");
+    }else{
+      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
     }
   }
   LOG_INFO("MCControlNAOqi running thread stopped");
@@ -241,7 +233,7 @@ void MCControlNAOqi::handleSensors()
     m_controller.setEncoderValues(qIn);
     m_controller.setSensorAcceleration(accIn);
     m_controller.setSensorAngularVelocity(rateIn);
-    m_controller.controller().realRobot().jointTorques(tauIn);
+    m_controller.setJointTorques(tauIn);
 
     // Start control only once the robot state has been read at least once
     control_cv.notify_one();
