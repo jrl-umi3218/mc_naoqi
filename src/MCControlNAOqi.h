@@ -1,5 +1,5 @@
 #pragma once
-
+#include "ContactForcePublisher.h"
 #include <condition_variable>
 #include <mutex>
 #include <thread>
@@ -8,6 +8,8 @@
 
 #include <qi/anyobject.hpp>
 #include <qi/session.hpp>
+
+#include <mc_rtc/ros.h>
 
 namespace mc_control
 {
@@ -26,8 +28,12 @@ class MCControlNAOqi
    /**
     * @brief Interface constructor and destructor
     */
-  MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port);
+  MCControlNAOqi(mc_control::MCGlobalController& controller, std::shared_ptr<ContactForcePublisher> &cfp_ptr,
+                  const std::string& host, const unsigned int port);
   virtual ~MCControlNAOqi();
+
+  /*! Publish contact forces from mc_rtc to ROS */
+  bool publish_contact_forces = false;
 
   /**
    * @brief Is the interface running
@@ -95,9 +101,13 @@ class MCControlNAOqi
   /*! Controller's iteration count*/
   unsigned int iter_since_start;
 
+  /*! Contact force publisher */
+  std::shared_ptr<ContactForcePublisher> &cfp_ptr;
+
   /* Connection information */
   /*! Connection host */
   std::string host;
+
   /*! Remote port for control connection */
   unsigned int portControl;
 
@@ -130,7 +140,7 @@ class MCControlNAOqi
   int msTillBlink;
 
   /*! Mobile base control (Pepper only) */
-  bool moveMobileBase = true;
+  bool moveMobileBase = false;
 };
 
 } /* mc_nao */

@@ -1,4 +1,5 @@
 #include "MCControlNAOqi.h"
+#include "ContactForcePublisher.h"
 
 // mc_rtc
 #include <mc_control/mc_global_controller.h>
@@ -10,12 +11,13 @@
 
 namespace mc_rtc_naoqi
 {
-MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host,
-                               const unsigned int port = 9559)
+MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::shared_ptr<ContactForcePublisher> &cfp_ptr,
+                                const std::string& host,const unsigned int port = 9559)
     : m_controller(controller),
       m_timeStep(static_cast<unsigned int>(1000 * controller.timestep())),
       m_running(true),
       iter_since_start(0),
+      cfp_ptr(cfp_ptr),
       host(host),
       portControl(port)
 {
@@ -112,6 +114,9 @@ MCControlNAOqi::~MCControlNAOqi() {
   if(host != "simulation"){
     al_fastdcm.call<void>("stopLoop");
   }
+  if(cfp_ptr){
+    cfp_ptr->stop();
+  }
   // wait for control thread to finish
   control_th.join();
 }
@@ -148,6 +153,11 @@ void MCControlNAOqi::control_thread()
         // Sending actuator commands to the fastgetset_dcm local module (running on the robot)
         if(host != "simulation"){
           al_fastdcm.call<void>("setJointAngles", angles);
+        }
+
+        // Publish contact forces computed by mc_rtc to ROS
+        if(cfp_ptr){
+          cfp_ptr->update();
         }
       }
     }
@@ -404,6 +414,9 @@ void MCControlNAOqi::stop()
     al_fastdcm.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
     al_fastdcm.call<void>("setLeds", "shoulderLeds", 0.5f, 0.5f, 0.5f);
     al_fastdcm.call<void>("isetLeds", "earsLeds", 0.0);
+  }
+  if(cfp_ptr){
+    cfp_ptr->stop();
   }
   LOG_INFO("Controller Stopped");
 }

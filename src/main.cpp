@@ -1,11 +1,11 @@
 #include "MCControlNAOqi.h"
+#include "ContactForcePublisher.h"
+
 #include <mc_control/mc_global_controller.h>
-
-#include <boost/program_options.hpp>
 #include <boost/algorithm/string/trim.hpp>
-#include <mc_rtc/config.h>
+#include <boost/program_options.hpp>
 #include <mc_rtc/logging.h>
-
+#include <mc_rtc/config.h>
 #include <mc_rtc/ros.h>
 #include <ros/ros.h>
 
@@ -139,6 +139,10 @@ void input_thread(MCControlNAOqi & controlNAOqi)
 
 int main(int argc, char **argv)
 {
+  std::shared_ptr<ros::NodeHandle> nh = mc_rtc::ROSBridge::get_node_handle();
+  auto nh_p = *nh;
+  std::shared_ptr<ContactForcePublisher> cfp_ptr = nullptr;
+
   std::string conf_file = mc_rtc::CONF_PATH;
   std::string host;
   unsigned int port;
@@ -155,8 +159,7 @@ int main(int argc, char **argv)
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
 
-  if(vm.count("help"))
-  {
+  if(vm.count("help")){
     std::cout << desc << std::endl;
     return 1;
   }
@@ -166,12 +169,17 @@ int main(int argc, char **argv)
 
   // Create interface object
   mc_control::MCGlobalController controller(conf_file);
-  if(controller.robot().name() != "nao" && controller.robot().name() != "pepper")
-  {
+
+  MCControlNAOqi mc_control_naoqi(controller, cfp_ptr, host, port);
+
+  if(mc_control_naoqi.publish_contact_forces){
+    cfp_ptr.reset(new ContactForcePublisher(nh_p, controller));
+  }
+
+  if(controller.robot().name() != "nao" && controller.robot().name() != "pepper"){
     LOG_ERROR("MCControlNAOqi: This program can only handle nao and pepper at the moment");
     return 1;
   }
-  MCControlNAOqi mc_control_naoqi(controller, host, port);
 
   std::thread spin_th;
   #ifdef MC_RTC_HAS_ROS
