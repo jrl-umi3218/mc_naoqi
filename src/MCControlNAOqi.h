@@ -28,12 +28,12 @@ class MCControlNAOqi
    /**
     * @brief Interface constructor and destructor
     */
-  MCControlNAOqi(mc_control::MCGlobalController& controller, std::shared_ptr<ContactForcePublisher> &cfp_ptr,
+  MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
                   const std::string& host, const unsigned int port);
   virtual ~MCControlNAOqi();
 
   /*! Publish contact forces from mc_rtc to ROS */
-  bool publish_contact_forces = false;
+  bool publish_contact_forces = true;
 
   /**
    * @brief Is the interface running
@@ -102,7 +102,7 @@ class MCControlNAOqi
   unsigned int iter_since_start;
 
   /*! Contact force publisher */
-  std::shared_ptr<ContactForcePublisher> &cfp_ptr;
+  std::unique_ptr<ContactForcePublisher> &cfp_ptr;
 
   /* Connection information */
   /*! Connection host */

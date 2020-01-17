@@ -141,7 +141,7 @@ int main(int argc, char **argv)
 {
   std::shared_ptr<ros::NodeHandle> nh = mc_rtc::ROSBridge::get_node_handle();
   auto nh_p = *nh;
-  std::shared_ptr<ContactForcePublisher> cfp_ptr = nullptr;
+  std::unique_ptr<ContactForcePublisher> cfp_ptr = nullptr;
 
   std::string conf_file = mc_rtc::CONF_PATH;
   std::string host;

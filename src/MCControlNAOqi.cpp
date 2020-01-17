@@ -11,7 +11,7 @@
 
 namespace mc_rtc_naoqi
 {
-MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::shared_ptr<ContactForcePublisher> &cfp_ptr,
+MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
                                 const std::string& host,const unsigned int port = 9559)
     : m_controller(controller),
       m_timeStep(static_cast<unsigned int>(1000 * controller.timestep())),
