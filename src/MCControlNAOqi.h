@@ -1,15 +1,12 @@
 #pragma once
+
 #include "ContactForcePublisher.h"
 #include <condition_variable>
-#include <mutex>
-#include <thread>
 
-#include <Eigen/Core>
-
-#include <qi/anyobject.hpp>
 #include <qi/session.hpp>
 
 #include <mc_rtc/ros.h>
+#include "nav_msgs/Odometry.h"
 
 namespace mc_control
 {
@@ -67,25 +64,27 @@ class MCControlNAOqi
 
  private:
   /**
-   * @brief Sends mc_rtc controller commands to the robot.
+   * @brief Thread that sends mc_rtc controller commands to the robot.
    */
   void control_thread();
+
   /**
-   * @brief Retrieves robot sensor values, and provide them to
-   * MCGlobalController
+   * @brief Thread that retrieves robot sensor values and sends them to mc_rtc
    */
-  void handleSensors();
+  void sensor_thread();
 
  private:
   /*! Global mc_rtc controller */
-  mc_control::MCGlobalController& m_controller;
+  mc_control::MCGlobalController& globalController;
 
-  /*! Timestep expressed in ms */
-  unsigned int m_timeStep;
+  /*! Controller timestep expressed in ms */
+  unsigned int timestep;
+
   /*! Running the mc_rtc_naoqi interface */
-  bool m_running = true;
+  bool interfaceRunning = true;
+
   /*! Servo on/off (joint stiffness 0 if off) */
-  bool m_servo = false;
+  bool servoState = false;
 
   /* Sensor information */
   /*! Encoder values */
@@ -98,8 +97,6 @@ class MCControlNAOqi
   Eigen::Vector3d accIn;
   /*! Angular velocity */
   Eigen::Vector3d rateIn;
-  /*! Controller's iteration count*/
-  unsigned int iter_since_start;
 
   /*! Contact force publisher */
   std::unique_ptr<ContactForcePublisher> &cfp_ptr;
@@ -107,18 +104,16 @@ class MCControlNAOqi
   /* Connection information */
   /*! Connection host */
   std::string host;
-
-  /*! Remote port for control connection */
+  /*! Connection port */
   unsigned int portControl;
 
   /* Handles communication with NAOqi */
   qi::SessionPtr al_broker;
-
   /*! Custom DCM module for fast access to NAOqi memory and actuators */
   qi::AnyObject al_fastdcm;
   /*! Tables service (Pepper only) */
   qi::AnyObject al_tabletservice;
-  /*! ALLauncher module */
+  /*! ALLauncher module (check if needed modules are present on robot) */
   qi::AnyObject al_launcher;
 
   /*! Control and sensor threads */
@@ -130,17 +125,45 @@ class MCControlNAOqi
 
   /*!  Maps sensor name to sensor index */
   std::map<std::string, size_t> sensorOrderMap;
-  /*! Sensor values read from the memory */
+  /*! Sensor values read from the robot memory */
   std::vector<float> sensors;
   /*! Total number of sensors */
   int numSensors;
-  /*! blinking ability */
-  // note: enabling ALAutonomousBlinking seems to work in interactive mode only
-  bool enableBlinking;
+  /*! Use robot IMU sensor */
+  bool useRobotIMU = false;
+
+  /*! Eye blinking ability */
+  // note: enabling ALAutonomousBlinking works in interactive mode only
+  bool enableBlinking = true;
   int msTillBlink;
 
+  /*! Enable talking */
+  bool enableTalking = false;
+
   /*! Mobile base control (Pepper only) */
-  bool moveMobileBase = false;
+  bool moveMobileBase = true;
+  unsigned int numWheels = 3;
+  double wheel_radius = 0.07; // meters
+  std::vector<std::string> wheelNames = {"WheelFL_link", "WheelFR_link", "WheelB_link"};
+  Eigen::Matrix3d wheelsJacobian;
+  Eigen::Vector3d mobileBaseSpeedCommand;
+  Eigen::Vector3d wheelsSpeedCommand;
+
+public:
+  /* ROS topic monitoring thread */
+  bool useROS = false;
+  std::thread spin_th;
+  void monitorROSTopic();
+
+  /* T265 tracking camera */
+  void updateBodySensor(const nav_msgs::Odometry::ConstPtr& msg);
+  Eigen::Vector3d t265_position;
+  Eigen::Quaterniond t265_orientation;
+  Eigen::Vector3d t265_linvel;
+  Eigen::Vector3d t265_angvel;
+  Eigen::Vector3d init_t265_pos_from_kin;
+  Eigen::Quaterniond init_t265_rot_from_kin;
+
 };
 
 } /* mc_nao */

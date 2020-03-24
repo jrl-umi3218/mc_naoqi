@@ -1,8 +1,9 @@
 ---
 # What robot is being controlled
-MainRobot: pepper_ffb
+MainRobot: PepperExtraHardware
 # Enabled controllers
-Enabled: [Posture]
+# Enabled: [MCRecordDataset]
+Enabled: [WholeBodyPepperFSMController]
 
 # Load and run state observers.
 # Order matters here, estimators will be run after each other.
@@ -19,21 +20,22 @@ Enabled: [Posture]
 #
 # Only the estimators in the "UpdateObservers" list will affect the state of the real robot.
 # The other estimators will only be run and logged, such that they may be used for comparison purposes.
-EnabledObservers: [Encoder, BodySensor, KinematicInertial]
-RunObservers: [Encoder]
-UpdateObservers: [Encoder]
+EnabledObservers: [Encoder, BodySensor]
+RunObservers: [Encoder, BodySensor]
+UpdateObservers: [Encoder, BodySensor]
+
 
 # Specific configuration for each observer
 Observers:
   Encoder:
     # Valid values are [estimator, control, none]
-    UpdatePositionFrom: estimator
-    UpdateVelocityFrom: estimator
+    UpdatePosition: estimator
+    UpdateVelocity: estimator
     Log: true
   BodySensor:
     # Valid entries are [control, estimator, none]
     UpdateFrom: estimator
-    FloatingBaseSensor: FloatingBase
+    FloatingBaseSensor: T265
 
 # Controller timestep
 Timestep: 0.012
@@ -48,7 +50,7 @@ Log: true
 
 # LogDirectory dictates where the log files will be stored, defaults to
 # system temp directory
-LogDirectory: /home/nana/idh/exp_pos_err_prediction/datasets
+LogDirectory: /tmp
 
 # The log file will have the name [LogTemplate]-[ControllerName]-[date].log
 LogTemplate: mc-control

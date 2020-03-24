@@ -1,39 +1,42 @@
+// mc_rtc_naoqi
 #include "MCControlNAOqi.h"
 #include "ContactForcePublisher.h"
 
-// mc_rtc
-#include <mc_control/mc_global_controller.h>
+// SpaceVecAlg
+#include <SpaceVecAlg/Conversions.h>
 
-// std
-#include <algorithm>
-#include <chrono>
-#include <memory>
 
 namespace mc_rtc_naoqi
 {
 MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
                                 const std::string& host,const unsigned int port = 9559)
-    : m_controller(controller),
-      m_timeStep(static_cast<unsigned int>(1000 * controller.timestep())),
-      m_running(true),
-      iter_since_start(0),
+    : globalController(controller),
+      timestep(static_cast<unsigned int>(1000 * controller.timestep())),
+      interfaceRunning(true),
       cfp_ptr(cfp_ptr),
       host(host),
       portControl(port)
 {
-  m_controller.running = false;
-  LOG_INFO("timestep : " << controller.timestep());
-  LOG_INFO("m_timeStep : " << m_timeStep);
+  /* Don't start running controller before commanded `start` */
+  globalController.running = false;
 
-  // led animation option
-  enableBlinking = true;
-  msTillBlink = rand() % 6000 + 1000;
+  /* Start ROS thread to monitor ROS topics if required */
+  if(useROS){
+    spin_th = std::thread(std::bind(&MCControlNAOqi::monitorROSTopic, this));
+    LOG_INFO("ROS thread started")
+  }
 
-  // Create Naoqi session
+  /* Eye led anomation option */
+  if(enableBlinking){
+    msTillBlink = rand() % 6000 + 1000;
+  }
+
+  /* Connect to robot (real or simulation) */
   if(host != "simulation"){
+    /* Create Naoqi session */
     al_broker = qi::makeSession();
-    // Try to connect with TCP to robot
-    LOG_INFO("MCControlNAOqi: Connecting to " << m_controller.robot().name()
+    /* Try to connect via TCP to the robot */
+    LOG_INFO("MCControlNAOqi: Connecting to " << globalController.robot().name()
                                               << " robot on address " << host
                                               << ":" << portControl);
     try{
@@ -46,16 +49,29 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       std::cout << "Cannot connect to session: " << e.what() << std::endl;
       al_broker->close();
     }
-    std::cout << "Connected" << std::endl;
+    LOG_SUCCESS("Connected to " << host)
 
-    // Connect to local robot modules
+    /* Connect to local robot modules */
     al_fastdcm = al_broker->service("FastGetSetDCM");
     al_launcher = al_broker->service("ALLauncher");
-    if (m_controller.robot().name() == "pepper"){
+    if (globalController.robot().name() == "pepper"){
       al_tabletservice = al_broker->service("ALTabletService");
+      /* Compute wheels jacobian for Pepper mobile base control */
+      if(moveMobileBase){
+        for(unsigned int i = 0; i < numWheels; i++){
+          // TODO asses that the order of wheels is the same in nao_fastgetsetdcm and in wheelNames
+          sva::PTransformd base_X_wheel = globalController.robot().X_b1_b2("base_link", wheelNames[i]);
+          Eigen::Matrix4d hom_base_X_wheel = sva::conversions::toHomogeneous(base_X_wheel, sva::conversions::RightHanded);
+          wheelsJacobian(i,0) = hom_base_X_wheel(0,1);
+          wheelsJacobian(i,1) = hom_base_X_wheel(1,1);
+          wheelsJacobian(i,2) = -hom_base_X_wheel(1,3)*hom_base_X_wheel(0,1) + hom_base_X_wheel(0,3)*hom_base_X_wheel(1,1);
+        }
+        wheelsJacobian /= -wheel_radius;
+        LOG_INFO("Pepper wheels jacobian computed")
+      }
     }
 
-    // Order of sensors readings
+    /* Map sensor name to sensor index in `sensors` vector */
     std::vector<std::string> sensorsOrder = al_fastdcm.call<std::vector<std::string>>("getSensorsOrder");
     for (size_t i = 0; i < sensorsOrder.size(); i++)
     {
@@ -64,11 +80,11 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       sensorOrderMap[sensorName] = i;
     }
 
-    // Check that actuator order is the same everywhere
+    /* Check that actuator order is the same everywhere */
     std::vector<std::string> jointsOrder = al_fastdcm.call<std::vector<std::string>>("getJointOrder");
-    for(unsigned int i = 0; i<m_controller.robot().refJointOrder().size();i++){
-      if(m_controller.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
-        LOG_WARNING(m_controller.robot().refJointOrder()[i] << "!=" << jointsOrder[i] << "!=" << sensorsOrder[i].substr(std::string("Encoder").length()))
+    for(unsigned int i = 0; i<globalController.robot().refJointOrder().size();i++){
+      if(globalController.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
+        LOG_WARNING(globalController.robot().refJointOrder()[i] << "!=" << jointsOrder[i] << "!=" << sensorsOrder[i].substr(std::string("Encoder").length()))
         LOG_ERROR_AND_THROW(std::runtime_error, "Joints reference order does not match! Check the definitions in the remote and local robot modules.")
       }
     }
@@ -77,207 +93,260 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     LOG_WARNING("Host is '" << host << "'. Running simulation only. No connection to real robot.")
   }
 
-  // Initialize main robot position/orentation sensor data
-  m_controller.setSensorOrientation(Eigen::Quaterniond::Identity());
-  m_controller.setSensorPosition(Eigen::Vector3d::Zero());
-
-  // Control thread will run QP (every m_timeStep ms) and send result joint commands to robot
+  /* Control thread will run QP (every timestep ms) and send result joint commands to the robot */
   control_th = std::thread(std::bind(&MCControlNAOqi::control_thread, this));
-  // Sensor thread reads the sensor values (which can be used by observer to update real robot representation in controller)
+
+  /* Sensor thread reads the sensor values and passes them along to `mc_rtc` (mc_observers etc) */
   if(host != "simulation"){
-    // Joints position sensor readings
-    qIn.resize(m_controller.robot().refJointOrder().size());
-    // Tau for now is just electric current sensor readings
-    tauIn.resize(m_controller.robot().refJointOrder().size());
-    // Allocate space for reading all sensors from the memory
+    /* Joints position sensor readings */
+    qIn.resize(globalController.robot().refJointOrder().size());
+    /* Torque for now is just electric current sensor readings */
+    tauIn.resize(globalController.robot().refJointOrder().size());
+    /* Allocate space for reading all sensors from the robot memory */
     numSensors = al_fastdcm.call<int>("numSensors");
     sensors.resize(numSensors);
-    sensor_th = std::thread(std::bind(&MCControlNAOqi::handleSensors, this));
+    /* Start sensor thread */
+    sensor_th = std::thread(std::bind(&MCControlNAOqi::sensor_thread, this));
   }else{
-    // running simulation only
-    auto & mbc = m_controller.robot().mbc();
-    const auto & rjo = m_controller.ref_joint_order();
+    /* Running simulation only */
+    /* Setting realRobot encoder values same as control robot at the start of controller first run */
+    auto & mbc = globalController.robot().mbc();
+    const auto & rjo = globalController.ref_joint_order();
     for(const auto & jn : rjo){
-      if(m_controller.robot().hasJoint(jn)){
-        for(auto & qj : mbc.q[m_controller.robot().jointIndexByName(jn)]){
+      if(globalController.robot().hasJoint(jn)){
+        for(auto & qj : mbc.q[globalController.robot().jointIndexByName(jn)]){
           qIn.push_back(qj);
         }
       }
     }
-    m_controller.setEncoderValues(qIn);
+    globalController.setEncoderValues(qIn);
   }
+
+  /* First update of FB from controller */
+  if(useROS){
+    globalController.realRobot().posW(globalController.robot().posW());
+    globalController.setSensorPosition(globalController.realRobot().bodyPosW("t265_pose").translation());
+    globalController.setSensorOrientation(Eigen::Quaterniond(globalController.realRobot().bodyPosW("t265_pose").rotation()));
+    /* Initialize t265 position from robot kinematics */
+    init_t265_pos_from_kin = globalController.realRobot().bodyPosW("t265_pose").translation();
+    init_t265_rot_from_kin = Eigen::Quaterniond(globalController.realRobot().bodyPosW("t265_pose").rotation());
+  }
+
+  LOG_INFO("MCControlNAOqi interface initialized")
 }
 
-// Destructor
+/* Destructor */
 MCControlNAOqi::~MCControlNAOqi() {
-  // disconnect callback from DCM
+  /* Disconnect callback from DCM */
   if(host != "simulation"){
     al_fastdcm.call<void>("stopLoop");
   }
   if(cfp_ptr){
     cfp_ptr->stop();
   }
-  // wait for control thread to finish
+  /* Wait for control thread to finish */
   control_th.join();
 }
 
 
 void MCControlNAOqi::control_thread()
 {
+  /* Wait for first sensor readings from sensor_thread */
   if(host != "simulation"){
     LOG_INFO("[Control] Waiting for sensor data");
     std::unique_lock<std::mutex> lk(control_mut);
     control_cv.wait(lk);
     LOG_INFO("[Control] Got sensor data, ready for control");
   }
+  LOG_INFO("Controller thread start")
 
+  /* Vector of joint angles to be sent to robot actuators */
   std::vector<float> angles;
-  angles.resize(m_controller.robot().refJointOrder().size());
+  angles.resize(globalController.robot().refJointOrder().size());
 
-  while (m_running){
+  while (interfaceRunning){
     auto start = std::chrono::high_resolution_clock::now();
 
-    if (m_controller.running){
-      /** CONTROL loop **/
-      // LOG_INFO("[Control] Running controller");
-      if (m_controller.run()){
-        double t = 0.;  // get latest QP result
-        const mc_solver::QPResultMsg& res = m_controller.send(t);
+    if (globalController.running){
 
-        for (size_t i = 0; i < m_controller.robot().refJointOrder().size(); ++i){
-          const auto& jname = m_controller.robot().refJointOrder()[i];
+      /** CONTROL loop **/
+      if (globalController.run()){
+        /* Get latest QP result */
+        const mc_solver::QPResultMsg& res = globalController.send(0);
+
+        /* Prepare to send desired joint angles as actuator commands */
+        for (size_t i = 0; i < globalController.robot().refJointOrder().size(); ++i){
+          const auto& jname = globalController.robot().refJointOrder()[i];
           angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
-          // LOG_INFO("setting " << jname << " = " << angles[i]);
         }
 
-        // Sending actuator commands to the fastgetset_dcm local module (running on the robot)
+        /* Update gripper state */
+        std::map<std::string, std::vector<double>> gQs = globalController.gripperQ();
+        // TODO make sure active gripper joint values are correctly put into `angles` vector (otherwise robot won't move grippers)
+
+        /* Send actuator commands to the robot */
         if(host != "simulation"){
           al_fastdcm.call<void>("setJointAngles", angles);
+
+          /* Prepera wheels speed command */
+          if(globalController.robot().name() == "pepper" && moveMobileBase){
+            mobileBaseSpeedCommand(0) = globalController.robot().mbc().alpha[0][3];
+            mobileBaseSpeedCommand(1) = globalController.robot().mbc().alpha[0][4];
+            mobileBaseSpeedCommand(2) = globalController.robot().mbc().alpha[0][2];
+            wheelsSpeedCommand = wheelsJacobian * mobileBaseSpeedCommand;
+            /* Send wheel speed commands */
+            al_fastdcm.call<void>("setWheelSpeed", wheelsSpeedCommand(0), wheelsSpeedCommand(1), wheelsSpeedCommand(2));
+          }
         }
 
-        // Publish contact forces computed by mc_rtc to ROS
+        /* Update bodySensor in control thread if working in simulation mode */
+        // TODO update in sensor_thread otherwise
+        if(host != "simulation" and useROS){
+          globalController.setSensorPosition(t265_position);
+          globalController.setSensorOrientation(t265_orientation);
+          globalController.setSensorLinearVelocity(t265_linvel);
+          globalController.setSensorAngularVelocity(t265_angvel);
+        }
+
+        /* Publish contact forces computed by mc_rtc to ROS */
         if(cfp_ptr){
           cfp_ptr->update();
         }
       }
     }
+    /* Wait until next controller run */
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
-    if (elapsed * 1000 > m_timeStep){
-      LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << m_timeStep << " ms");
+    if (elapsed * 1000 > timestep){
+      LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << timestep << " ms");
     }else{
-      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
+      std::this_thread::sleep_for(std::chrono::milliseconds(timestep - static_cast<unsigned int>(elapsed * 1000)));
     }
   }
   LOG_INFO("MCControlNAOqi running thread stopped");
 }
 
-void MCControlNAOqi::handleSensors()
+void MCControlNAOqi::sensor_thread()
 {
-  while (m_running)
+  while (interfaceRunning)
   {
     auto start = std::chrono::high_resolution_clock::now();
+
+    /* Get all sensor readings from the robot */
     sensors = al_fastdcm.call<std::vector<float>>("getSensors");
 
-    // RETRIEVE AND PARSE SENSORS COMMON TO BOTH ROBOTS FIRST
-
-    // Get encoder values
-    const auto& ref_joint_order = m_controller.robot().refJointOrder();
+    /* Process the sensor readings common to bith robots */
+    /* Encoder values */
+    const auto& ref_joint_order = globalController.robot().refJointOrder();
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
       const auto& jname = ref_joint_order[i];
       qIn[i] = sensors[sensorOrderMap["Encoder" + jname]];
-      // LOG_INFO("Encoder: " << jname << " = " << qIn[i]);
     }
 
+    /* Electric current sensor values */
     for (unsigned i = 0; i < ref_joint_order.size(); ++i)
     {
       const auto& jname = ref_joint_order[i];
       // TODO: multiply these values by current to torque constants of each motor
       tauIn[i] = sensors[sensorOrderMap["ElectricCurrent" + jname]];
-      //LOG_INFO("ElectricCurrent:" << jname << " = " << tauIn[i]);
     }
 
-    accIn(0) = sensors[sensorOrderMap["AccelerometerX"]];
-    accIn(1) = sensors[sensorOrderMap["AccelerometerY"]];
-    accIn(2) = sensors[sensorOrderMap["AccelerometerZ"]];
-    // LOG_INFO("Accelerometer: " << accIn);
+    if(useRobotIMU){
+      accIn(0) = sensors[sensorOrderMap["AccelerometerX"]];
+      accIn(1) = sensors[sensorOrderMap["AccelerometerY"]];
+      accIn(2) = sensors[sensorOrderMap["AccelerometerZ"]];
 
-    rateIn(0) = sensors[sensorOrderMap["GyroscopeX"]];
-    rateIn(1) = sensors[sensorOrderMap["GyroscopeY"]];
-    rateIn(2) = sensors[sensorOrderMap["GyroscopeZ"]];
+      rateIn(0) = sensors[sensorOrderMap["GyroscopeX"]];
+      rateIn(1) = sensors[sensorOrderMap["GyroscopeY"]];
+      rateIn(2) = sensors[sensorOrderMap["GyroscopeZ"]];
+    }
 
-    // SENSORS SPECIFIC TO NAO ROBOT
+    /* Sensors specific to NAO robot */
     std::map<std::string, sva::ForceVecd> wrenches;
-    if (m_controller.robot().name() == "nao")
+    if (globalController.robot().name() == "nao")
     {
+      /* Feet force sensors */
       double LFsrTOTAL = sensors[sensorOrderMap["LF_FSR_TotalWeight"]];
       double RFsrTOTAL = sensors[sensorOrderMap["RF_FSR_TotalWeight"]];
 
       wrenches["LF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
       wrenches["RF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
-      m_controller.setWrenches(wrenches);
+      globalController.setWrenches(wrenches);
     }
-    // SENSORS SPECIFIC TO PEPPER
-    else if (m_controller.robot().name() == "pepper")
+    /* Sensors specific to Pepper robot */
+    else if (globalController.robot().name() == "pepper")
     {
-      // Bumpers
-      wrenches["BumperFrontLeft"] = sva::ForceVecd({0., 0., 0.}, {sensors[sensorOrderMap["BumperFrontLeft"]], 0., 0.});
-      wrenches["BumperFrontRight"] = sva::ForceVecd({0., 0., 0.}, {sensors[sensorOrderMap["BumperFrontRight"]], 0., 0.});
-      wrenches["BumperBack"] = sva::ForceVecd({0., 0., 0.}, {sensors[sensorOrderMap["BumperBack"]], 0., 0.});
-      for(const auto & w : wrenches){
-        m_controller.controller().realRobot().forceSensor(w.first).wrench(w.second);
+      /* Bumpers */
+      for(const auto & ts : globalController.controller().realRobot().touchSensors()){
+        // TODO make sure touch sensor names match in pepper RobotModule and sensorOrderMap
+        // TODO check that sensors exist in pepper RobotModule
+        // Set touch sensor values
+        globalController.controller().realRobot().touchSensor(ts.name()).touch(sensors[sensorOrderMap[ts.name()]]);
       }
 
-      // Switch off the wheels when bumpers detect contact
-      if(moveMobileBase){
-        if(sensors[sensorOrderMap["BumperFrontLeft"]] == 1.0 ||
-            sensors[sensorOrderMap["BumperFrontRight"]] == 1.0 ||
-              sensors[sensorOrderMap["BumperBack"]] == 1.0){
-                al_fastdcm.call<void>("setWheelsStiffness", 0.);
-                LOG_WARNING("[Sensors] Bumpers: switched off wheels")
+      /* Speakers */
+      if(enableTalking){
+        for(const auto & s : globalController.controller().realRobot().speakers()){
+          // TODO check that audio device exist in pepper RobotModule
+          // TODO check if speaker is playing sound and set speakersPlaying
+          auto textToSay = globalController.controller().realRobot().speaker(s.name()).getTextToSay();
+          if(textToSay!=""){
+            al_fastdcm.call<void>("sayText", textToSay);
+          }
+          /* Remove text that is being said */
+          globalController.controller().realRobot().speaker(s.name()).setTextToSay("");
         }
       }
     }
 
-    // Communicate sensor readings to controller
-    m_controller.setEncoderValues(qIn);
-    m_controller.setSensorAcceleration(accIn);
-    m_controller.setSensorAngularVelocity(rateIn);
-    m_controller.setJointTorques(tauIn);
+    /* Send sensor readings to mc_rtc controller */
+    globalController.setEncoderValues(qIn);
+    if(useRobotIMU){
+      globalController.setSensorAcceleration(accIn);
+      globalController.setSensorAngularVelocity(rateIn);
+    }
+    //globalController.controller().realRobot().jointTorques(tauIn);
+    globalController.setJointTorques(tauIn);
 
-    // Start control only once the robot state has been read at least once
+    /* Update bodySensor from tracking camera */
+    if(useROS && !useRobotIMU){
+      globalController.setSensorPosition(t265_position);
+      globalController.setSensorOrientation(t265_orientation);
+      globalController.setSensorLinearVelocity(t265_linvel);
+      globalController.setSensorAngularVelocity(t265_angvel);
+    }
+
+    /* Start control only once the robot state has been read at least once */
     control_cv.notify_one();
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
-    if (elapsed * 1000 > m_timeStep){
-      LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << m_timeStep << " ms");
+    if (elapsed * 1000 > timestep){
+      LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << timestep << " ms");
     }
-    else if(m_timeStep - elapsed > m_timeStep/2.0 ){
-      // blink if there is enough spare time after sensors reading until next DCM cicle
+    else if(timestep - elapsed > timestep/2.0 && enableBlinking){
+      /* Blink if there is enough time after sensors reading until next DCM cicle */
       auto startExtraAnimation = std::chrono::high_resolution_clock::now();
-      if(enableBlinking){
-        msTillBlink -= int(m_timeStep + elapsed * 1000);
-        if(msTillBlink<=0){
-          al_fastdcm.call<void>("blink");
-          msTillBlink = rand() % 6000 + 1000;
-        }
+      msTillBlink -= int(timestep + elapsed * 1000);
+      if(msTillBlink<=0){
+        al_fastdcm.call<void>("blink");
+        msTillBlink = rand() % 6000 + 1000;
       }
       double elapsedExtraAnimation = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startExtraAnimation).count();
-      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000) - static_cast<unsigned int>(elapsedExtraAnimation * 1000)));
+      std::this_thread::sleep_for(std::chrono::milliseconds(timestep - static_cast<unsigned int>(elapsed * 1000) - static_cast<unsigned int>(elapsedExtraAnimation * 1000)));
     }
     else{
-      std::this_thread::sleep_for(std::chrono::milliseconds(m_timeStep - static_cast<unsigned int>(elapsed * 1000)));
+      std::this_thread::sleep_for(std::chrono::milliseconds(timestep - static_cast<unsigned int>(elapsed * 1000)));
     }
   }
 }
 
 void MCControlNAOqi::servo(const bool state)
 {
-  m_servo = state;
+  servoState = state;
   bool isConnected2DCM = al_fastdcm.call<bool>("isPreProccessConnected");
 
-  if (m_servo) // Servo ON
+  if (servoState) // Servo ON
   {
-    // Deactivate safety reflexes if ALMotion module is running
+    /* Deactivate safety reflexes if ALMotion module is running */
     if(al_launcher.call<bool>("isModulePresent", "ALMotion")){
       LOG_INFO("ALMotion module is active on the robot. Disabling safety reflexes...")
       try{
@@ -287,7 +356,7 @@ void MCControlNAOqi::servo(const bool state)
         al_motion.call<void>("setSmartStiffnessEnabled", false);
         al_motion.call<void>("setExternalCollisionProtectionEnabled", "All", false);
         al_motion.call<void>("setFallManagerEnabled", false);
-        if(m_controller.robot().name() == "pepper"){
+        if(globalController.robot().name() == "pepper"){
           al_motion.call<void>("setPushRecoveryEnabled", false);
         }
       }catch (const std::exception& e){
@@ -296,74 +365,73 @@ void MCControlNAOqi::servo(const bool state)
       }
     }
 
-    // connect the mc_rtc joint update callback to robot's DCM loop
+    /* Connect the mc_rtc joint update callback to robot's DCM loop */
     if(!isConnected2DCM){
       al_fastdcm.call<void>("startLoop");
       LOG_INFO("Connected to DCM loop")
     }
 
-    if(m_controller.robot().name() == "pepper"){
-      // set tablet image
+    if(globalController.robot().name() == "pepper"){
+      /* Set tablet image */
       al_tabletservice.call<bool>("setBrightness", 1.0);
-      // Display a local image located in /opt/aldebaran/www/apps/media/html/
-      // Custom image needs to be loaded to robot first
-      // The ip of the robot from the tablet is 198.18.0.1
+      /* Display a local image located in /opt/aldebaran/www/apps/media/html/
+         Custom image needs to be loaded to the robot first
+         The ip of the robot from the tablet is 198.18.0.1 */
       al_tabletservice.call<bool>("showImage", "http://198.18.0.1/apps/media/tablet_screen.png");
     }
 
-    // If controller is not running, set to current joint state from encoder
-    if (!m_controller.running)
+    /* If controller is not running, set joint angle commands to current joint state from encoders */
+    if (!globalController.running)
     {
       std::vector<float> angles;
-      angles.resize(m_controller.robot().refJointOrder().size());
-
-      for (size_t i = 0; i < m_controller.robot().encoderValues().size(); ++i)
+      angles.resize(globalController.robot().refJointOrder().size());
+      for (size_t i = 0; i < globalController.robot().encoderValues().size(); ++i)
       {
-        angles[i] = static_cast<float>(m_controller.robot().encoderValues()[i]);
-        // LOG_INFO("setting " << m_controller.robot().refJointOrder()[i] << " = " << angles[i]);
+        angles[i] = static_cast<float>(globalController.robot().encoderValues()[i]);
       }
       al_fastdcm.call<void>("setJointAngles", angles);
     }
 
-    // Make sure Pepper wheels actuators are not commanded to move before turning motors on
-    if(m_controller.robot().name() == "pepper"){
+    /* Make sure Pepper wheels actuators are not commanded to move before turning motors on */
+    if(globalController.robot().name() == "pepper"){
       al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
     }
 
-    // Gradually increase stiffness over 1s to prevent initial jerky motion
+    /* Gradually increase stiffness over 1s to prevent initial jerky motion */
     for (int i = 1; i <= 100; ++i)
     {
       al_fastdcm.call<void>("setStiffness", i / 100.);
-      if(m_controller.robot().name() == "pepper" && moveMobileBase){
+      if(globalController.robot().name() == "pepper" && moveMobileBase){
         al_fastdcm.call<void>("setWheelsStiffness", i / 100.);
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    // end of servo on
+    // end of servo ON
   }
   else
-  { // Servo OFF
-    // Gradually decrease stiffness over 1s to prevent jerky motion
+  { /* Servo OFF */
+    /* Gradually decrease stiffness over 1s to prevent jerky motion */
     for (int i = 1; i <= 100; ++i)
     {
       al_fastdcm.call<void>("setStiffness", 1.0 - i / 100.);
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    if(m_controller.robot().name() == "pepper"){
+    if(globalController.robot().name() == "pepper"){
+      /* Switch off wheels */
       if(moveMobileBase){
         al_fastdcm.call<void>("setWheelsStiffness", 0.);
       }
-      // Hide tablet image
+      /* Hide tablet image */
       al_tabletservice.call<void>("hideImage");
     }
 
-    // disconnect the mc_rtc joint update callback from robot's DCM loop
+    /* Disconnect the mc_rtc joint update callback from robot's DCM loop */
     if(isConnected2DCM){
       al_fastdcm.call<void>("stopLoop");
       LOG_INFO("Disconnected from DCM loop")
     }
 
-    // Re-activate safety reflexes
+    /* Re-activate safety reflexes */
     if(al_launcher.call<bool>("isModulePresent", "ALMotion")){
       LOG_INFO("ALMotion module is active on the robot. Re-activating safety reflexes...")
       qi::AnyObject al_motion = al_broker->service("ALMotion");
@@ -372,7 +440,7 @@ void MCControlNAOqi::servo(const bool state)
       al_motion.call<void>("setSmartStiffnessEnabled", true);
       al_motion.call<void>("setExternalCollisionProtectionEnabled", "All", true);
       al_motion.call<void>("setFallManagerEnabled", true);
-      if(m_controller.robot().name() == "pepper"){
+      if(globalController.robot().name() == "pepper"){
         al_motion.call<void>("setPushRecoveryEnabled", true);
       }
       LOG_INFO("Safety reflexes reactivated")
@@ -380,18 +448,21 @@ void MCControlNAOqi::servo(const bool state)
   }
 }
 
-bool MCControlNAOqi::running() { return m_running; }
+bool MCControlNAOqi::running() { return interfaceRunning; }
 
 void MCControlNAOqi::start()
 {
-  if(!m_controller.running){
-    // Initialize controller with values from the robot sensors
+  if(!globalController.running){
+    /* Initialize controller with values from the encoders */
     LOG_INFO("[Control] Initializing controller");
-    m_controller.init(qIn);
-    LOG_INFO("[Control] Controller initialized with sensor data from the robot");
+    globalController.init(qIn);
+    LOG_INFO("[Control] Controller initialized with sensor data from encoders");
 
-    m_controller.running = true;
-    if (m_controller.robot().name() == "pepper" && host != "simulation")
+    /* Start running controller */
+    globalController.running = true;
+
+    /* Change led colors */
+    if (globalController.robot().name() == "pepper" && host != "simulation")
     {
       al_fastdcm.call<void>("setLeds", "eyesCenter", 1.0f, 1.0f, 1.0f);
       al_fastdcm.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
@@ -401,12 +472,16 @@ void MCControlNAOqi::start()
       al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
     }
   }
+  LOG_INFO("Controller stated")
 }
 
 void MCControlNAOqi::stop()
 {
-  m_controller.running = false;
-  if (m_controller.robot().name() == "pepper" && host != "simulation")
+  /* Stop running controller */
+  globalController.running = false;
+
+  /* Change led colors */
+  if (globalController.robot().name() == "pepper" && host != "simulation")
   {
     al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
 
@@ -415,10 +490,49 @@ void MCControlNAOqi::stop()
     al_fastdcm.call<void>("setLeds", "shoulderLeds", 0.5f, 0.5f, 0.5f);
     al_fastdcm.call<void>("isetLeds", "earsLeds", 0.0);
   }
+
+  /* Stop contact force publishing */
   if(cfp_ptr){
     cfp_ptr->stop();
   }
   LOG_INFO("Controller Stopped");
 }
-mc_control::MCGlobalController& MCControlNAOqi::controller() { return m_controller; }
+
+void MCControlNAOqi::monitorROSTopic(){
+  // Subscribe to ROS topic
+  std::shared_ptr<ros::NodeHandle> nh = mc_rtc::ROSBridge::get_node_handle();
+  ros::Subscriber sub = nh->subscribe("/camera_fisheye/odom/sample", 500, &MCControlNAOqi::updateBodySensor, this);
+  // Monitor messages
+  ros::Rate r(200);
+  while(ros::ok()){
+    ros::spinOnce();
+    r.sleep();
+  }
+}
+
+void MCControlNAOqi::updateBodySensor(const nav_msgs::Odometry::ConstPtr& msg)
+{
+  /* Update position */
+  t265_position[0] = init_t265_pos_from_kin[0] + msg->pose.pose.position.x;
+  t265_position[1] = init_t265_pos_from_kin[1] + msg->pose.pose.position.y;
+  t265_position[2] = init_t265_pos_from_kin[2];
+
+  /* Update orientation */
+  t265_orientation = Eigen::Quaterniond(msg->pose.pose.orientation.w,
+                                        msg->pose.pose.orientation.x,
+                                        msg->pose.pose.orientation.y,
+                                        msg->pose.pose.orientation.z).inverse();
+
+  /* Update linear velocity */
+  t265_linvel[0] = msg->twist.twist.linear.x;
+  t265_linvel[1] = msg->twist.twist.linear.y;
+  t265_linvel[2] = msg->twist.twist.linear.z;
+
+  /* Update angular velocity */
+  t265_angvel[0] = msg->twist.twist.angular.x;
+  t265_angvel[1] = msg->twist.twist.angular.y;
+  t265_angvel[2] = msg->twist.twist.angular.z;
+}
+
+mc_control::MCGlobalController& MCControlNAOqi::controller() { return globalController; }
 } /* mc_nao */

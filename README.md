@@ -1,6 +1,8 @@
-# ROS package for `mc_rtc <-> naoqi` communication.
+# mc_rtc_naoqi
 
-Handles communication between `mc_rtc` and NAO/PEPPER robots.
+### Interface to handle communication between `mc_rtc` and NAO/Pepper robots
+
+![mc_rtc_naoqi](doc/mc_rtc_naoqi.png "mc_rtc_naoqi interface")
 
 
 # Installation
