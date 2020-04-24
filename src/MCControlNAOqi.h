@@ -159,6 +159,8 @@ class MCControlNAOqi
   Eigen::Vector3d mobileBaseSpeedCommand;
   Eigen::Vector3d wheelsSpeedCommand;
 
+  std::vector<std::string> bumperNames = {"BumperFrontRight", "BumperFrontLeft", "BumperBack"};
+
 public:
   /* ROS topic monitoring thread */
   bool useROS = false;

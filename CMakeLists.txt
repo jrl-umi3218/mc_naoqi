@@ -23,11 +23,10 @@ find_package(Eigen3 REQUIRED)
 find_package(mc_rtc REQUIRED)
 find_package(Boost REQUIRED
 	COMPONENTS program_options)
+find_package(mc_pepper REQUIRED)
 
 add_required_dependency(naoqi_libqi)
 add_required_dependency(naoqi_libqicore)
 add_subdirectory(src)
 
 setup_project_finalize()
-
-

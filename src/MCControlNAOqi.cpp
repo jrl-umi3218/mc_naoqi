@@ -5,6 +5,9 @@
 // SpaceVecAlg
 #include <SpaceVecAlg/Conversions.h>
 
+#include <mc_pepper/sensors/Speaker.h>
+#include <mc_pepper/sensors/TouchSensor.h>
+#include <mc_pepper/sensors/VisualDisplay.h>
 
 namespace mc_rtc_naoqi
 {
@@ -295,7 +298,34 @@ void MCControlNAOqi::sensor_thread()
     }
 
     /* Sensors specific to Pepper robot */
-    // TODO merge from topic/GenericSensor patch
+    else if (globalController.robot().name() == "pepper"){
+      /* Bumpers */
+      // TODO check that touch sensor names match in pepper RobotModule and sensorOrderMap
+      for (auto& bumperName : bumperNames){
+       if(globalController.robot().hasSensor<mc_pepper::TouchSensor>(bumperName)){
+         auto & bumper = globalController.robot().sensor<mc_pepper::TouchSensor>(bumperName);
+         bumper.touch(sensors[sensorOrderMap[bumper.name()]]);
+       }
+      }
+
+      /* Speakers */
+      if(enableTalking){
+       if(globalController.robot().hasSensor<mc_pepper::Speaker>("Speakers")){
+         auto & speaker = globalController.robot().sensor<mc_pepper::Speaker>("Speakers");
+         if(speaker.hasSomethingToSay()){
+           al_fastdcm.call<void>("sayText", speaker.say());
+         }
+       }
+      }
+
+      /* VisualDisplay */
+      if(globalController.robot().hasSensor<mc_pepper::VisualDisplay>("Tablet")){
+       auto & tablet = globalController.robot().sensor<mc_pepper::VisualDisplay>("Tablet");
+       if(tablet.newURL()){
+         al_tabletservice.call<bool>("showImage", tablet.display());
+       }
+      }
+    }
 
     /* Send sensor readings to mc_rtc controller */
     globalController.setEncoderValues(qIn);
