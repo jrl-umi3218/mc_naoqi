@@ -88,19 +88,10 @@ void input_thread(MCControlNAOqi & controlNAOqi)
     ss << ui;
     std::string token;
     ss >> token;
-    /* Start the controller */
-    if(token == "start")
+    /* Start the controller (if not started), stop otwerwise */
+    if(token == "s")
     {
-      LOG_INFO("Starting experiment")
-      controlNAOqi.start();
-      LOG_INFO("Experiment started")
-    }
-    /* Stop the controller */
-    else if(token == "stop")
-    {
-      LOG_INFO("Stopping experiment")
-      controlNAOqi.stop();
-      LOG_INFO("Experiment stopped")
+      controlNAOqi.startOrStop(!controlNAOqi.controllerStartedState);
     }
     /* Switch on robot motors */
     else if(token == "on")
@@ -117,7 +108,7 @@ void input_thread(MCControlNAOqi & controlNAOqi)
     {
       std::string controller_name;
       ss >> controller_name;
-      controlNAOqi.stop();
+      controlNAOqi.startOrStop(false);
       controlNAOqi.controller().running = false;
       controlNAOqi.controller().EnableController(controller_name);
     }

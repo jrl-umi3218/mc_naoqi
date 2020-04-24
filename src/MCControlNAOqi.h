@@ -38,9 +38,15 @@ class MCControlNAOqi
   bool running();
 
   /**
-   * @brief Start the experiment
+   * @brief Start or stop the experiment
+   *
+   * @param state
+   *  true: Start controller
+   *  false: Stop controller
    */
-  void start();
+  void startOrStop(const bool state);
+  bool controllerStartedState = false;
+  std::string controllerButtonText_ = "Start controller";
 
   /**
    * @brief Stop the experimnet
@@ -76,15 +82,17 @@ class MCControlNAOqi
  private:
   /*! Global mc_rtc controller */
   mc_control::MCGlobalController& globalController;
+  std::string controllerToRun_;
 
   /*! Controller timestep expressed in ms */
   unsigned int timestep;
 
   /*! Running the mc_rtc_naoqi interface */
-  bool interfaceRunning = true;
+  bool interfaceRunning;
 
   /*! Servo on/off (joint stiffness 0 if off) */
   bool servoState = false;
+  std::string servoButtonText_ = "Motors ON";
 
   /* Sensor information */
   /*! Encoder values */
@@ -105,7 +113,9 @@ class MCControlNAOqi
   /*! Connection host */
   std::string host;
   /*! Connection port */
-  unsigned int portControl;
+  unsigned int port;
+  /*! Connection state */
+  std::string connectionState = "none";
 
   /* Handles communication with NAOqi */
   qi::SessionPtr al_broker;
