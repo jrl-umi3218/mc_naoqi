@@ -22,7 +22,7 @@ Then compile `mc_naoqi`.
 ## On the robot
 
 Communication with the robot sensors and actuators is managed using the embedded [DCM](http://doc.aldebaran.com/2-1/naoqi/sensors/dcm.html) module on the robot.
-To access its features, [naoqi_fastgetsetdcm](https://gite.lirmm.fr/softbankrobotics/naoqi_fastgetsetdcm) needs to be installed and run on the robot.
+To access its features, [mc_naoqi_dcm](https://gite.lirmm.fr/softbankrobotics/mc_naoqi_dcm) needs to be installed and run on the robot.
 
 # Usage
 
