@@ -1,4 +1,4 @@
-// mc_rtc_naoqi
+// mc_naoqi
 #include "MCControlNAOqi.h"
 #include "ContactForcePublisher.h"
 
@@ -6,7 +6,7 @@
 #include <SpaceVecAlg/Conversions.h>
 
 
-namespace mc_rtc_naoqi
+namespace mc_naoqi
 {
 MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
                                 const std::string& host,const unsigned int port = 9559)
@@ -71,7 +71,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     connectionState = strstr.str() + " OK";
 
     /* Connect to local robot modules */
-    al_fastdcm = al_broker->service("FastGetSetDCM");
+    mc_naoqi_dcm = al_broker->service("MCNAOqiDCM");
     al_launcher = al_broker->service("ALLauncher");
     if (globalController.robot().name() == "pepper"){
       al_tabletservice = al_broker->service("ALTabletService");
@@ -91,7 +91,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     }
 
     /* Map sensor name to sensor index in `sensors` vector */
-    std::vector<std::string> sensorsOrder = al_fastdcm.call<std::vector<std::string>>("getSensorsOrder");
+    std::vector<std::string> sensorsOrder = mc_naoqi_dcm.call<std::vector<std::string>>("getSensorsOrder");
     for (size_t i = 0; i < sensorsOrder.size(); i++)
     {
       LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
@@ -100,7 +100,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     }
 
     /* Check that actuator order is the same everywhere */
-    std::vector<std::string> jointsOrder = al_fastdcm.call<std::vector<std::string>>("getJointOrder");
+    std::vector<std::string> jointsOrder = mc_naoqi_dcm.call<std::vector<std::string>>("getJointOrder");
     for(unsigned int i = 0; i<globalController.robot().refJointOrder().size();i++){
       if(globalController.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
         LOG_WARNING(globalController.robot().refJointOrder()[i] << "!=" << jointsOrder[i] << "!=" << sensorsOrder[i].substr(std::string("Encoder").length()))
@@ -123,7 +123,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     /* Torque for now is just electric current sensor readings */
     tauIn.resize(globalController.robot().refJointOrder().size());
     /* Allocate space for reading all sensors from the robot memory */
-    numSensors = al_fastdcm.call<int>("numSensors");
+    numSensors = mc_naoqi_dcm.call<int>("numSensors");
     sensors.resize(numSensors);
     /* Start sensor thread */
     sensor_th = std::thread(std::bind(&MCControlNAOqi::sensor_thread, this));
@@ -162,7 +162,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
 MCControlNAOqi::~MCControlNAOqi() {
   /* Disconnect callback from DCM */
   if(host != "simulation"){
-    al_fastdcm.call<void>("stopLoop");
+    mc_naoqi_dcm.call<void>("stopLoop");
   }
   if(cfp_ptr){
     cfp_ptr->stop();
@@ -204,7 +204,7 @@ void MCControlNAOqi::control_thread()
 
         /* Send actuator commands to the robot */
         if(host != "simulation"){
-          al_fastdcm.call<void>("setJointAngles", angles);
+          mc_naoqi_dcm.call<void>("setJointAngles", angles);
 
           /* Prepera wheels speed command */
           if(globalController.robot().name() == "pepper" && moveMobileBase){
@@ -213,7 +213,7 @@ void MCControlNAOqi::control_thread()
             mobileBaseSpeedCommand(2) = globalController.robot().mbc().alpha[0][2];
             wheelsSpeedCommand = wheelsJacobian * mobileBaseSpeedCommand;
             /* Send wheel speed commands */
-            al_fastdcm.call<void>("setWheelSpeed", wheelsSpeedCommand(0), wheelsSpeedCommand(1), wheelsSpeedCommand(2));
+            mc_naoqi_dcm.call<void>("setWheelSpeed", wheelsSpeedCommand(0), wheelsSpeedCommand(1), wheelsSpeedCommand(2));
           }
         }
 
@@ -253,7 +253,7 @@ void MCControlNAOqi::sensor_thread()
     auto start = std::chrono::high_resolution_clock::now();
 
     /* Get all sensor readings from the robot */
-    sensors = al_fastdcm.call<std::vector<float>>("getSensors");
+    sensors = mc_naoqi_dcm.call<std::vector<float>>("getSensors");
 
     /* Process the sensor readings common to bith robots */
     /* Encoder values */
@@ -326,7 +326,7 @@ void MCControlNAOqi::sensor_thread()
       auto startExtraAnimation = std::chrono::high_resolution_clock::now();
       msTillBlink -= int(timestep + elapsed * 1000);
       if(msTillBlink<=0){
-        al_fastdcm.call<void>("blink");
+        mc_naoqi_dcm.call<void>("blink");
         msTillBlink = rand() % 6000 + 1000;
       }
       double elapsedExtraAnimation = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startExtraAnimation).count();
@@ -341,7 +341,7 @@ void MCControlNAOqi::sensor_thread()
 void MCControlNAOqi::servo(const bool state)
 {
   if(host != "simulation"){
-    bool isConnected2DCM = al_fastdcm.call<bool>("isPreProccessConnected");
+    bool isConnected2DCM = mc_naoqi_dcm.call<bool>("isPreProccessConnected");
 
     if (state) // Servo ON
     {
@@ -367,7 +367,7 @@ void MCControlNAOqi::servo(const bool state)
 
       /* Connect the mc_rtc joint update callback to robot's DCM loop */
       if(!isConnected2DCM){
-        al_fastdcm.call<void>("startLoop");
+        mc_naoqi_dcm.call<void>("startLoop");
         LOG_INFO("Connected to DCM loop")
       }
 
@@ -389,20 +389,25 @@ void MCControlNAOqi::servo(const bool state)
         {
           angles[i] = static_cast<float>(globalController.robot().encoderValues()[i]);
         }
-        al_fastdcm.call<void>("setJointAngles", angles);
+        mc_naoqi_dcm.call<void>("setJointAngles", angles);
       }
 
       /* Make sure Pepper wheels actuators are not commanded to move before turning motors on */
       if(globalController.robot().name() == "pepper"){
-        al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
+        /* Enable mobile base safety reflex */
+        if(wheelsOffOnBumperPressed){
+          mc_naoqi_dcm.call<void>("bumperSafetyReflex", true);
+        }
+
+        mc_naoqi_dcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
       }
 
       /* Gradually increase stiffness over 1s to prevent initial jerky motion */
       for (int i = 1; i <= 100; ++i)
       {
-        al_fastdcm.call<void>("setStiffness", i / 100.);
+        mc_naoqi_dcm.call<void>("setStiffness", i / 100.);
         if(globalController.robot().name() == "pepper" && moveMobileBase){
-          al_fastdcm.call<void>("setWheelsStiffness", i / 100.);
+          mc_naoqi_dcm.call<void>("setWheelsStiffness", i / 100.);
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
@@ -417,21 +422,28 @@ void MCControlNAOqi::servo(const bool state)
       /* Gradually decrease stiffness over 1s to prevent jerky motion */
       for (int i = 1; i <= 100; ++i)
       {
-        al_fastdcm.call<void>("setStiffness", 1.0 - i / 100.);
+        mc_naoqi_dcm.call<void>("setStiffness", 1.0 - i / 100.);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
+
       if(globalController.robot().name() == "pepper"){
         /* Switch off wheels */
         if(moveMobileBase){
-          al_fastdcm.call<void>("setWheelsStiffness", 0.);
+          mc_naoqi_dcm.call<void>("setWheelsStiffness", 0.);
         }
+
+        /* Disable mobile base safety reflex */
+        if(wheelsOffOnBumperPressed){
+          mc_naoqi_dcm.call<void>("bumperSafetyReflex", false);
+        }
+
         /* Hide tablet image */
         al_tabletservice.call<void>("hideImage");
       }
 
       /* Disconnect the mc_rtc joint update callback from robot's DCM loop */
       if(isConnected2DCM){
-        al_fastdcm.call<void>("stopLoop");
+        mc_naoqi_dcm.call<void>("stopLoop");
         LOG_INFO("Disconnected from DCM loop")
       }
 
@@ -477,12 +489,12 @@ void MCControlNAOqi::startOrStop(const bool state)
     /* Change led colors */
     if (globalController.robot().name() == "pepper" && host != "simulation")
     {
-      al_fastdcm.call<void>("setLeds", "eyesCenter", 1.0f, 1.0f, 1.0f);
-      al_fastdcm.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
-      al_fastdcm.call<void>("setLeds", "shoulderLeds", 1.0f, 0.5f, 1.0f);
-      al_fastdcm.call<void>("isetLeds", "earsLeds", 1.0);
+      mc_naoqi_dcm.call<void>("setLeds", "eyesCenter", 1.0f, 1.0f, 1.0f);
+      mc_naoqi_dcm.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
+      mc_naoqi_dcm.call<void>("setLeds", "shoulderLeds", 1.0f, 0.5f, 1.0f);
+      mc_naoqi_dcm.call<void>("isetLeds", "earsLeds", 1.0);
 
-      al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
+      mc_naoqi_dcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
     }
     controllerStartedState = true;
     controllerButtonText_ = "Stop";
@@ -496,12 +508,12 @@ void MCControlNAOqi::startOrStop(const bool state)
     /* Change led colors */
     if (globalController.robot().name() == "pepper" && host != "simulation")
     {
-      al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
+      mc_naoqi_dcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
 
-      al_fastdcm.call<void>("setLeds", "eyesCenter", 1.0f, 1.0f, 1.0f);
-      al_fastdcm.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
-      al_fastdcm.call<void>("setLeds", "shoulderLeds", 0.5f, 0.5f, 0.5f);
-      al_fastdcm.call<void>("isetLeds", "earsLeds", 0.0);
+      mc_naoqi_dcm.call<void>("setLeds", "eyesCenter", 1.0f, 1.0f, 1.0f);
+      mc_naoqi_dcm.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
+      mc_naoqi_dcm.call<void>("setLeds", "shoulderLeds", 0.5f, 0.5f, 0.5f);
+      mc_naoqi_dcm.call<void>("isetLeds", "earsLeds", 0.0);
     }
 
     /* Stop contact force publishing */
@@ -552,4 +564,4 @@ void MCControlNAOqi::updateBodySensor(const nav_msgs::Odometry::ConstPtr& msg)
 }
 
 mc_control::MCGlobalController& MCControlNAOqi::controller() { return globalController; }
-} /* mc_nao */
+} /* mc_naoqi */

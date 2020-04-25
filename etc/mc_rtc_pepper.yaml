@@ -1,9 +1,8 @@
 ---
 # What robot is being controlled
-MainRobot: PepperExtraHardware
+MainRobot: Pepper
 # Enabled controllers
-# Enabled: [MCRecordDataset]
-Enabled: [WholeBodyPepperFSMController]
+Enabled: [Posture]
 
 # Load and run state observers.
 # Order matters here, estimators will be run after each other.
@@ -29,13 +28,9 @@ UpdateObservers: [Encoder, BodySensor]
 Observers:
   Encoder:
     # Valid values are [estimator, control, none]
-    UpdatePosition: estimator
-    UpdateVelocity: estimator
+    UpdatePosition: control
+    UpdateVelocity: control
     Log: true
-  BodySensor:
-    # Valid entries are [control, estimator, none]
-    UpdateFrom: estimator
-    FloatingBaseSensor: T265
 
 # Controller timestep
 Timestep: 0.012
