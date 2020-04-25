@@ -393,6 +393,11 @@ void MCControlNAOqi::servo(const bool state)
 
       /* Make sure Pepper wheels actuators are not commanded to move before turning motors on */
       if(globalController.robot().name() == "pepper"){
+        /* Enable mobile base safety reflex */
+        if(wheelsOffOnBumperPressed){
+          al_fastdcm.call<void>("bumperSafetyReflex", true);
+        }
+
         al_fastdcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
       }
 
@@ -419,11 +424,18 @@ void MCControlNAOqi::servo(const bool state)
         al_fastdcm.call<void>("setStiffness", 1.0 - i / 100.);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
+
       if(globalController.robot().name() == "pepper"){
         /* Switch off wheels */
         if(moveMobileBase){
           al_fastdcm.call<void>("setWheelsStiffness", 0.);
         }
+
+        /* Disable mobile base safety reflex */
+        if(wheelsOffOnBumperPressed){
+          al_fastdcm.call<void>("bumperSafetyReflex", false);
+        }
+
         /* Hide tablet image */
         al_tabletservice.call<void>("hideImage");
       }

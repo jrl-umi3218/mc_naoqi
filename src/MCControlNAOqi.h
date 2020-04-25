@@ -159,6 +159,8 @@ class MCControlNAOqi
   Eigen::Vector3d mobileBaseSpeedCommand;
   Eigen::Vector3d wheelsSpeedCommand;
 
+  bool wheelsOffOnBumperPressed = true;
+
 public:
   /* ROS topic monitoring thread */
   bool useROS = false;
