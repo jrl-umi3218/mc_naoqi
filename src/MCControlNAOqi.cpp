@@ -17,6 +17,10 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       host(host),
       port(port)
 {
+  /* Disable gripper safety triggers */
+  globalController.robot().gripper("r_gripper").actualCommandDiffTrigger(100);
+  globalController.robot().gripper("l_gripper").actualCommandDiffTrigger(100);
+
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
   globalController.controller().gui()->addElement({"NAQqi"}, // Can make this element first tab in the gui
@@ -198,10 +202,6 @@ void MCControlNAOqi::control_thread()
           angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
         }
 
-        /* Update gripper state */
-        std::map<std::string, std::vector<double>> gQs = globalController.gripperQ();
-        // TODO make sure active gripper joint values are correctly put into `angles` vector (otherwise robot won't move grippers)
-
         /* Send actuator commands to the robot */
         if(host != "simulation"){
           al_fastdcm.call<void>("setJointAngles", angles);
@@ -234,6 +234,7 @@ void MCControlNAOqi::control_thread()
     }else{
       globalController.run(); // keep running the gui and plugins
     }
+
     /* Wait until next controller run */
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
     if (elapsed * 1000 > timestep){

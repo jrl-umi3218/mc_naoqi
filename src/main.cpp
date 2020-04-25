@@ -11,14 +11,14 @@ namespace
   /* Open fully all robot grippers */
   bool openGrippers(mc_control::MCGlobalController & controller, std::stringstream&)
   {
-    controller.setGripperOpenPercent(1);
+    controller.setGripperOpenPercent(controller.robot().name(), 1);
     return true;
   }
 
   /* Fully close all robot grippers */
   bool closeGrippers(mc_control::MCGlobalController & controller, std::stringstream&)
   {
-    controller.setGripperOpenPercent(0);
+    controller.setGripperOpenPercent(controller.robot().name(), 0);
     return true;
   }
 
@@ -32,7 +32,7 @@ namespace
       args >> tmp;
       v.push_back(tmp);
     }
-    controller.setGripperTargetQ(gripper, v);
+    controller.setGripperTargetQ(controller.robot().name(), gripper, v);
     return true;
   }
 
