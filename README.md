@@ -21,10 +21,8 @@ Then compile `mc_rtc_naoqi`.
 
 ## On the robot
 
-Communication with the robot sensors and actuators is mananged using the embedded [DCM](http://doc.aldebaran.com/2-1/naoqi/sensors/dcm.html) module on the robot.
-To access its features, [nao_fastgetsetdcm](https://gite.lirmm.fr/atanguy/nao_fastgetsetdcm) needs to be installed and run on the robot.
-
-For PEPPER, see `topic/for_mc_rtc_naoqi_ros` in `nao_festgetsetdcm` repository (code needs to be updated to libqi use for NAO).
+Communication with the robot sensors and actuators is managed using the embedded [DCM](http://doc.aldebaran.com/2-1/naoqi/sensors/dcm.html) module on the robot.
+To access its features, [naoqi_fastgetsetdcm](https://gite.lirmm.fr/softbankrobotics/naoqi_fastgetsetdcm) needs to be installed and run on the robot.
 
 # Usage
 
