@@ -120,7 +120,7 @@ class MCControlNAOqi
   /* Handles communication with NAOqi */
   qi::SessionPtr al_broker;
   /*! Custom DCM module for fast access to NAOqi memory and actuators */
-  qi::AnyObject al_fastdcm;
+  qi::AnyObject mc_naoqi_dcm;
   /*! Tables service (Pepper only) */
   qi::AnyObject al_tabletservice;
   /*! ALLauncher module (check if needed modules are present on robot) */
