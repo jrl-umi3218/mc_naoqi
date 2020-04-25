@@ -14,7 +14,7 @@ class MCGlobalController;
 } /* mc_control */
 
 
-namespace mc_rtc_naoqi
+namespace mc_naoqi
 {
 /**
  * @brief Control interface for NAO and PEPPER robots running NAOqi operating system
@@ -87,7 +87,7 @@ class MCControlNAOqi
   /*! Controller timestep expressed in ms */
   unsigned int timestep;
 
-  /*! Running the mc_rtc_naoqi interface */
+  /*! Running the mc_naoqi interface */
   bool interfaceRunning;
 
   /*! Servo on/off (joint stiffness 0 if off) */

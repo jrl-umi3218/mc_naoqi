@@ -1,4 +1,4 @@
-// mc_rtc_naoqi
+// mc_naoqi
 #include "MCControlNAOqi.h"
 #include "ContactForcePublisher.h"
 
@@ -6,7 +6,7 @@
 #include <SpaceVecAlg/Conversions.h>
 
 
-namespace mc_rtc_naoqi
+namespace mc_naoqi
 {
 MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
                                 const std::string& host,const unsigned int port = 9559)
@@ -563,4 +563,4 @@ void MCControlNAOqi::updateBodySensor(const nav_msgs::Odometry::ConstPtr& msg)
 }
 
 mc_control::MCGlobalController& MCControlNAOqi::controller() { return globalController; }
-} /* mc_nao */
+} /* mc_naoqi */

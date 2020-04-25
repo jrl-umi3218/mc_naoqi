@@ -4,7 +4,7 @@
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
-using namespace mc_rtc_naoqi;
+using namespace mc_naoqi;
 
 namespace
 {
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
   std::unique_ptr<ContactForcePublisher> cfp_ptr = nullptr;
 
   /* Set command line arguments options */
-  /* Usage example: ./src/mc_rtc_naoqi -h simulation -f ../etc/mc_rtc_pepper.yaml*/
+  /* Usage example: ./src/mc_naoqi -h simulation -f ../etc/mc_rtc_pepper.yaml*/
   std::string conf_file = mc_rtc::CONF_PATH;
   std::string host;
   unsigned int port;

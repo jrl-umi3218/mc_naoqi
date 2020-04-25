@@ -1,8 +1,8 @@
-# mc_rtc_naoqi
+# mc_naoqi
 
 ### Interface to handle communication between `mc_rtc` and NAO/Pepper robots
 
-![mc_rtc_naoqi](doc/mc_rtc_naoqi.png "mc_rtc_naoqi interface")
+![mc_naoqi](doc/mc_naoqi.png "mc_naoqi interface")
 
 
 # Installation
@@ -16,7 +16,7 @@ sudo apt-get install ros-kinetic-naoqi-libqi
 sudo apt-get install ros-kinetic-naoqi-libqicore
 ```
 
-Then compile `mc_rtc_naoqi`.
+Then compile `mc_naoqi`.
 
 
 ## On the robot
@@ -27,7 +27,7 @@ To access its features, [naoqi_fastgetsetdcm](https://gite.lirmm.fr/softbankrobo
 # Usage
 
 ```
-mc_rtc_naoqi -h <robot_hostname> -p <robot_port> -f <mc_rtc_configuration_file.conf>
+mc_naoqi -h <robot_hostname> -p <robot_port> -f <mc_rtc_configuration_file.conf>
 ```
 
 ## CLI Commands
