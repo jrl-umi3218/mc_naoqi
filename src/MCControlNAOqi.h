@@ -14,7 +14,7 @@ class MCGlobalController;
 } /* mc_control */
 
 
-namespace mc_rtc_naoqi
+namespace mc_naoqi
 {
 /**
  * @brief Control interface for NAO and PEPPER robots running NAOqi operating system
@@ -46,7 +46,7 @@ class MCControlNAOqi
    */
   void startOrStop(const bool state);
   bool controllerStartedState = false;
-  std::string controllerButtonText_ = "Start controller";
+  std::string controllerButtonText_ = "Start/Stop controller";
 
   /**
    * @brief Stop the experimnet
@@ -87,12 +87,12 @@ class MCControlNAOqi
   /*! Controller timestep expressed in ms */
   unsigned int timestep;
 
-  /*! Running the mc_rtc_naoqi interface */
+  /*! Running the mc_naoqi interface */
   bool interfaceRunning;
 
   /*! Servo on/off (joint stiffness 0 if off) */
   bool servoState = false;
-  std::string servoButtonText_ = "Motors ON";
+  std::string servoButtonText_ = "Motors ON/OFF";
 
   /* Sensor information */
   /*! Encoder values */
@@ -120,7 +120,7 @@ class MCControlNAOqi
   /* Handles communication with NAOqi */
   qi::SessionPtr al_broker;
   /*! Custom DCM module for fast access to NAOqi memory and actuators */
-  qi::AnyObject al_fastdcm;
+  qi::AnyObject mc_naoqi_dcm;
   /*! Tables service (Pepper only) */
   qi::AnyObject al_tabletservice;
   /*! ALLauncher module (check if needed modules are present on robot) */
@@ -160,6 +160,10 @@ class MCControlNAOqi
   Eigen::Vector3d wheelsSpeedCommand;
 
   std::vector<std::string> bumperNames = {"BumperFrontRight", "BumperFrontLeft", "BumperBack"};
+
+  /* Enable or disable custom safety reflex */
+  bool wheelsOffOnBumperPressed = true;
+
 
 public:
   /* ROS topic monitoring thread */

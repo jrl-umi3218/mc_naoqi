@@ -11,7 +11,7 @@
 
 #include <thread>
 
-namespace mc_rtc_naoqi
+namespace mc_naoqi
 {
 struct ContactForcePublisher
 {
@@ -38,4 +38,4 @@ private:
   unsigned int iter = 0;
   unsigned int skip = 0;
 };
-} // namespace mc_rtc_naoqi
+} // namespace mc_naoqi

@@ -79,7 +79,7 @@ visualization_msgs::Marker makeForceNormMarker(const std::string & ns,
 }
 } // namespace
 
-namespace mc_rtc_naoqi
+namespace mc_naoqi
 {
 
 ContactForcePublisher::ContactForcePublisher(ros::NodeHandle & nh, mc_control::MCGlobalController & gc) : nh(nh), gc(gc)
@@ -203,4 +203,4 @@ void ContactForcePublisher::update()
   update_ready = true;
 }
 
-} // namespace mc_rtc_ros
+} // namespace mc_naoqi
