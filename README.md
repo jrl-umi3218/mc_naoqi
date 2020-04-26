@@ -50,8 +50,7 @@ If you wish to run the simulation only use `simulation` as a `<robot_hostname>`
 
 - `on` : servo on actuators
 - `off` : servo off actuators
-- `start` : starts `mc_rtc` controller
-- `stop` : stops `mc_rtc` controller
+- `s` : starts `mc_rtc` controller if stopped, stops otherwise
 - `hs` : go to half-sitting posture
 - `cc <controller name>` : change controller
 
