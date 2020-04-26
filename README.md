@@ -18,6 +18,12 @@ sudo apt-get install ros-kinetic-naoqi-libqicore
 
 Then compile `mc_naoqi`.
 
+```
+mkdir build
+cd build
+cmake ..
+make
+```
 
 ## On the robot
 
@@ -26,8 +32,18 @@ To access its features, [mc_naoqi_dcm](https://gite.lirmm.fr/softbankrobotics/mc
 
 # Usage
 
+To use the interface and connect to a real robot run
+
 ```
-mc_naoqi -h <robot_hostname> -p <robot_port> -f <mc_rtc_configuration_file.conf>
+# while in 'build' folder
+./src/mc_naoqi -h <robot_hostname> -p <robot_port> -f <mc_rtc_configuration_file.conf>
+```
+
+If you wish to run the simulation only use `simulation` as a `<robot_hostname>`
+
+```
+# while in 'build' folder
+./src/mc_naoqi -h simulation -f <mc_rtc_configuration_file.conf>
 ```
 
 ## CLI Commands
