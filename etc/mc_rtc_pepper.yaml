@@ -19,9 +19,9 @@ Enabled: [Posture]
 #
 # Only the estimators in the "UpdateObservers" list will affect the state of the real robot.
 # The other estimators will only be run and logged, such that they may be used for comparison purposes.
-EnabledObservers: [Encoder, BodySensor]
-RunObservers: [Encoder, BodySensor]
-UpdateObservers: [Encoder, BodySensor]
+EnabledObservers: [Encoder]
+RunObservers: [Encoder]
+UpdateObservers: [Encoder]
 
 
 # Specific configuration for each observer
