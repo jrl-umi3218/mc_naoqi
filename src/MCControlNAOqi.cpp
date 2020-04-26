@@ -17,16 +17,18 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       host(host),
       port(port)
 {
-  /* Disable gripper safety triggers */
-  globalController.robot().gripper("r_gripper").actualCommandDiffTrigger(100);
-  globalController.robot().gripper("l_gripper").actualCommandDiffTrigger(100);
+  /* Disable gripper safety triggers and change max velocity */
+  globalController.robot().gripper("r_gripper").actualCommandDiffTrigger(1);
+  globalController.robot().gripper("l_gripper").actualCommandDiffTrigger(1);
+  globalController.robot().gripper("r_gripper").percentVMAX(0.15);
+  globalController.robot().gripper("l_gripper").percentVMAX(0.15);
 
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
-  globalController.controller().gui()->addElement({"NAQqi"}, // Can make this element first tab in the gui
+  globalController.controller().gui()->addElement({"NAOqi"}, // TODO make this element first tab in the gui
     mc_rtc::gui::StringInput("Host", [this]() { return this->host; }, [this](const std::string & in){ this->host = in; }),
     mc_rtc::gui::NumberInput("Port", [this]() { return this->port; }, [this](unsigned int in){ this->port = in; }),
-    mc_rtc::gui::Button("Connect", [this]() { return; }), // implement connect/disconnect
+    mc_rtc::gui::Button("Connect", [this]() { return; }), // TODO implement connect/disconnect
     mc_rtc::gui::Label("Connection state", [this]() { return this->connectionState; }),
     mc_rtc::gui::StringInput("Controller", [this]()
                   { return this->controllerToRun_; },
