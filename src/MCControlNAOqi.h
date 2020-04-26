@@ -46,7 +46,7 @@ class MCControlNAOqi
    */
   void startOrStop(const bool state);
   bool controllerStartedState = false;
-  std::string controllerButtonText_ = "Start controller";
+  std::string controllerButtonText_ = "Start/Stop controller";
 
   /**
    * @brief Stop the experimnet
@@ -92,7 +92,7 @@ class MCControlNAOqi
 
   /*! Servo on/off (joint stiffness 0 if off) */
   bool servoState = false;
-  std::string servoButtonText_ = "Motors ON";
+  std::string servoButtonText_ = "Motors ON/OFF";
 
   /* Sensor information */
   /*! Encoder values */
@@ -159,6 +159,7 @@ class MCControlNAOqi
   Eigen::Vector3d mobileBaseSpeedCommand;
   Eigen::Vector3d wheelsSpeedCommand;
 
+  /* Enable or disable custom safety reflex */
   bool wheelsOffOnBumperPressed = true;
 
 public:
