@@ -74,7 +74,16 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     mc_naoqi_dcm = al_broker->service("MCNAOqiDCM");
     al_launcher = al_broker->service("ALLauncher");
     if (globalController.robot().name() == "pepper"){
+
+      /* Check  that mc_rc Robot object has visual display*/
+      if(!globalController.robot().hasSensor<mc_pepper::VisualDisplay>(displayDeviceName)){
+        LOG_WARNING("Pepper Robot object does not have a VisualDisplay named " << displayDeviceName)
+        LOG_WARNING("Visual display functionality will not be available from controller")
+        enableVisualDisplay = false;
+      }
+      /* Tablet service used by the mc_naoqi interface */
       al_tabletservice = al_broker->service("ALTabletService");
+
       /* Compute wheels jacobian for Pepper mobile base control */
       if(moveMobileBase){
         for(unsigned int i = 0; i < numWheels; i++){
@@ -109,11 +118,11 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     }
     LOG_INFO("Joints reference order check: OK")
 
-    /* Check that bumpers exist in mc_rtc RobotModule (thier name should be the same as in local DCM module) */
+    /* Check that bumpers exist in mc_rtc Robot object (thier name should be the same as in local DCM module) */
     std::vector<std::string> bumperNames = mc_naoqi_dcm.call<std::vector<std::string>>("bumperNames");
     for (auto bn : bumperNames) {
       if(!globalController.robot().hasSensor<mc_pepper::TouchSensor>(bn)){
-        LOG_WARNING("Pepper mc_rtc RobotModule does not have a TouchSensor named " << bn)
+        LOG_WARNING("Robot object does not have a TouchSensor named " << bn)
         LOG_WARNING("Bumper functionality will not be available for " << bn)
       }else if(sensorOrderMap.find(bn) == sensorOrderMap.end()){
         LOG_WARNING("Robot local DCM module does not have sensor entry for " << bn)
@@ -121,6 +130,13 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       }else{
         bumpers.push_back(bn);
       }
+    }
+
+    /* Check that mc_rtc Robot object has speakers */
+    if(!globalController.robot().hasSensor<mc_pepper::Speaker>(speakerDeviceName)){
+      LOG_WARNING("Robot object does not have a Speaker named " << speakerDeviceName)
+      LOG_WARNING("Speaker functionality will not be available")
+      enableTalking = false;
     }
 
   }else{
@@ -308,13 +324,13 @@ void MCControlNAOqi::sensor_thread()
     }
 
     /* Speakers */
-    if(enableTalking){
-     if(globalController.robot().hasSensor<mc_pepper::Speaker>("Speakers")){
-       auto & speaker = globalController.robot().sensor<mc_pepper::Speaker>("Speakers");
-       if(speaker.hasSomethingToSay()){
-         mc_naoqi_dcm.call<void>("sayText", speaker.say());
-       }
-     }
+    if(enableTalking)
+    {
+      auto & speaker = globalController.robot().sensor<mc_pepper::Speaker>(speakerDeviceName);
+      if(speaker.hasSomethingToSay())
+      {
+       mc_naoqi_dcm.call<void>("sayText", speaker.say());
+      }
     }
 
     /* Sensors specific to NAO robot */
@@ -330,13 +346,16 @@ void MCControlNAOqi::sensor_thread()
       globalController.setWrenches(wrenches);
     }
     /* Devices specific to Pepper robot */
-    else if (globalController.robot().name() == "pepper"){
+    else if (globalController.robot().name() == "pepper")
+    {
       /* VisualDisplay */
-      if(globalController.robot().hasSensor<mc_pepper::VisualDisplay>("Tablet")){
-       auto & tablet = globalController.robot().sensor<mc_pepper::VisualDisplay>("Tablet");
-       if(tablet.newURL()){
+      if(enableVisualDisplay)
+      {
+        auto & tablet = globalController.robot().sensor<mc_pepper::VisualDisplay>(displayDeviceName);
+        if(tablet.newURL())
+        {
          al_tabletservice.call<bool>("showImage", tablet.display());
-       }
+        }
       }
     }
 

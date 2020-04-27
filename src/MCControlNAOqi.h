@@ -148,7 +148,7 @@ class MCControlNAOqi
   int msTillBlink;
 
   /*! Enable talking */
-  bool enableTalking = false;
+  bool enableTalking = true;
 
   /*! Mobile base control (Pepper only) */
   bool moveMobileBase = true;
@@ -164,6 +164,13 @@ class MCControlNAOqi
 
   /* Enable or disable custom safety reflex */
   bool wheelsOffOnBumperPressed = true;
+
+  /* Name of the speakers device in mc_rtc RobotModule */
+  std::string speakerDeviceName = "Speakers";
+
+  /* Name of the visual display device in mc_rtc RobotModule */
+  std::string displayDeviceName = "Tablet";
+  bool enableVisualDisplay = true;
 
 
 public:
