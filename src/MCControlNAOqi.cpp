@@ -27,7 +27,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     mc_rtc::gui::StringInput("Host", [this]() { return this->host; }, [this](const std::string & in){ this->host = in; }),
     mc_rtc::gui::NumberInput("Port", [this]() { return this->port; }, [this](unsigned int in){ this->port = in; }),
     mc_rtc::gui::Button("Connect", [this]() { return; }), // implement connect/disconnect
-    mc_rtc::gui::Label("Connection state", [this]() { return this->connectionState; }),
+    mc_rtc::gui::Label("Connection status", [this]() { return this->connectionState; }),
     mc_rtc::gui::StringInput("Controller", [this]()
                   { return this->controllerToRun_; },
                   [this](const std::string & in){ this->controllerToRun_ = in; }), // controller to start (e.g. Posture, FSM,...)
@@ -329,7 +329,9 @@ void MCControlNAOqi::sensor_thread()
       auto & speaker = globalController.robot().device<mc_pepper::Speaker>(speakerDeviceName);
       if(speaker.hasSomethingToSay())
       {
-       mc_naoqi_dcm.call<void>("sayText", speaker.say());
+       // Non-blocking call to ALTextToSpeech
+       mc_naoqi_dcm.post("sayText", speaker.say());
+       LOG_INFO("Saying sentence in this loop")
       }
     }
 
@@ -354,7 +356,13 @@ void MCControlNAOqi::sensor_thread()
         auto & tablet = globalController.robot().device<mc_pepper::VisualDisplay>(displayDeviceName);
         if(tablet.newURL())
         {
-         tablet.succeed(al_tabletservice.call<bool>("showImage", tablet.display()));
+          // Non-blocking call to ALTabletService
+          al_tabletservice.post("showImage", tablet.display());
+          LOG_INFO("Showing image in this loop")
+        }
+        if(tablet.reset()){
+          al_tabletservice.post("hideImage");
+          tablet.reset(false);
         }
       }
     }
@@ -387,7 +395,7 @@ void MCControlNAOqi::sensor_thread()
       auto startExtraAnimation = std::chrono::high_resolution_clock::now();
       msTillBlink -= int(timestep + elapsed * 1000);
       if(msTillBlink<=0){
-        mc_naoqi_dcm.call<void>("blink");
+        mc_naoqi_dcm.post("blink");
         msTillBlink = rand() % 6000 + 1000;
       }
       double elapsedExtraAnimation = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startExtraAnimation).count();
@@ -438,7 +446,7 @@ void MCControlNAOqi::servo(const bool state)
         /* Display a local image located in /opt/aldebaran/www/apps/media/html/
            Custom image needs to be loaded to the robot first
            The ip of the robot from the tablet is 198.18.0.1 */
-        al_tabletservice.call<bool>("showImage", "http://198.18.0.1/apps/media/tablet_screen.png");
+        al_tabletservice.post("showImage", "http://198.18.0.1/apps/media/tablet_screen.png");
       }
 
       /* If controller is not running, set joint angle commands to current joint state from encoders */
@@ -499,7 +507,7 @@ void MCControlNAOqi::servo(const bool state)
         }
 
         /* Hide tablet image */
-        al_tabletservice.call<void>("hideImage");
+        al_tabletservice.post("hideImage");
       }
 
       /* Disconnect the mc_rtc joint update callback from robot's DCM loop */
