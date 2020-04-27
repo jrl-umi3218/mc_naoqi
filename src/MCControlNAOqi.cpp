@@ -5,6 +5,7 @@
 // SpaceVecAlg
 #include <SpaceVecAlg/Conversions.h>
 
+// mc_pepper
 #include <mc_pepper/sensors/Speaker.h>
 #include <mc_pepper/sensors/TouchSensor.h>
 #include <mc_pepper/sensors/VisualDisplay.h>
@@ -77,7 +78,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       /* Compute wheels jacobian for Pepper mobile base control */
       if(moveMobileBase){
         for(unsigned int i = 0; i < numWheels; i++){
-          // TODO asses that the order of wheels is the same in nao_fastgetsetdcm and in wheelNames
+          // TODO asses that the order of wheels is the same in mc_naoqi_dcm and in wheelNames
           sva::PTransformd base_X_wheel = globalController.robot().X_b1_b2("base_link", wheelNames[i]);
           Eigen::Matrix4d hom_base_X_wheel = sva::conversions::toHomogeneous(base_X_wheel, sva::conversions::RightHanded);
           wheelsJacobian(i,0) = hom_base_X_wheel(0,1);
@@ -98,7 +99,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       sensorOrderMap[sensorName] = i;
     }
 
-    /* Check that actuator order is the same everywhere */
+    /* Check that actuator order and names is the same everywhere */
     std::vector<std::string> jointsOrder = mc_naoqi_dcm.call<std::vector<std::string>>("getJointOrder");
     for(unsigned int i = 0; i<globalController.robot().refJointOrder().size();i++){
       if(globalController.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
@@ -107,6 +108,21 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       }
     }
     LOG_INFO("Joints reference order check: OK")
+
+    /* Check that bumpers exist in mc_rtc RobotModule (thier name should be the same as in local DCM module) */
+    std::vector<std::string> bumperNames = mc_naoqi_dcm.call<std::vector<std::string>>("bumperNames");
+    for (auto bn : bumperNames) {
+      if(!globalController.robot().hasSensor<mc_pepper::TouchSensor>(bn)){
+        LOG_WARNING("Pepper mc_rtc RobotModule does not have a TouchSensor named " << bn)
+        LOG_WARNING("Bumper functionality will not be available for " << bn)
+      }else if(sensorOrderMap.find(bn) == sensorOrderMap.end()){
+        LOG_WARNING("Robot local DCM module does not have sensor entry for " << bn)
+        LOG_WARNING("Bumper functionality will not be available for " << bn)
+      }else{
+        bumpers.push_back(bn);
+      }
+    }
+
   }else{
     connectionState = "virtual robot";
     LOG_WARNING("Host is '" << host << "'. Running simulation only. No connection to real robot.")
@@ -300,12 +316,10 @@ void MCControlNAOqi::sensor_thread()
     /* Sensors specific to Pepper robot */
     else if (globalController.robot().name() == "pepper"){
       /* Bumpers */
-      // TODO check that touch sensor names match in pepper RobotModule and sensorOrderMap
-      for (auto& bumperName : bumperNames){
-       if(globalController.robot().hasSensor<mc_pepper::TouchSensor>(bumperName)){
-         auto & bumper = globalController.robot().sensor<mc_pepper::TouchSensor>(bumperName);
-         bumper.touch(sensors[sensorOrderMap[bumper.name()]]);
-       }
+      for(auto& b : bumpers)
+      {
+        auto & bumper = globalController.robot().sensor<mc_pepper::TouchSensor>(b);
+        bumper.touch(sensors[sensorOrderMap[b]]);
       }
 
       /* Speakers */

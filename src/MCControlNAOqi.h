@@ -159,7 +159,8 @@ class MCControlNAOqi
   Eigen::Vector3d mobileBaseSpeedCommand;
   Eigen::Vector3d wheelsSpeedCommand;
 
-  std::vector<std::string> bumperNames = {"BumperFrontRight", "BumperFrontLeft", "BumperBack"};
+  /* Bumper names */
+  std::vector<std::string> bumpers;
 
   /* Enable or disable custom safety reflex */
   bool wheelsOffOnBumperPressed = true;
