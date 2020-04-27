@@ -300,6 +300,23 @@ void MCControlNAOqi::sensor_thread()
       rateIn(2) = sensors[sensorOrderMap["GyroscopeZ"]];
     }
 
+    /* Bumpers */
+    for(auto& b : bumpers)
+    {
+      auto & bumper = globalController.robot().sensor<mc_pepper::TouchSensor>(b);
+      bumper.touch(sensors[sensorOrderMap[b]]);
+    }
+
+    /* Speakers */
+    if(enableTalking){
+     if(globalController.robot().hasSensor<mc_pepper::Speaker>("Speakers")){
+       auto & speaker = globalController.robot().sensor<mc_pepper::Speaker>("Speakers");
+       if(speaker.hasSomethingToSay()){
+         mc_naoqi_dcm.call<void>("sayText", speaker.say());
+       }
+     }
+    }
+
     /* Sensors specific to NAO robot */
     std::map<std::string, sva::ForceVecd> wrenches;
     if (globalController.robot().name() == "nao")
@@ -312,26 +329,8 @@ void MCControlNAOqi::sensor_thread()
       wrenches["RF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
       globalController.setWrenches(wrenches);
     }
-
-    /* Sensors specific to Pepper robot */
+    /* Devices specific to Pepper robot */
     else if (globalController.robot().name() == "pepper"){
-      /* Bumpers */
-      for(auto& b : bumpers)
-      {
-        auto & bumper = globalController.robot().sensor<mc_pepper::TouchSensor>(b);
-        bumper.touch(sensors[sensorOrderMap[b]]);
-      }
-
-      /* Speakers */
-      if(enableTalking){
-       if(globalController.robot().hasSensor<mc_pepper::Speaker>("Speakers")){
-         auto & speaker = globalController.robot().sensor<mc_pepper::Speaker>("Speakers");
-         if(speaker.hasSomethingToSay()){
-           mc_naoqi_dcm.call<void>("sayText", speaker.say());
-         }
-       }
-      }
-
       /* VisualDisplay */
       if(globalController.robot().hasSensor<mc_pepper::VisualDisplay>("Tablet")){
        auto & tablet = globalController.robot().sensor<mc_pepper::VisualDisplay>("Tablet");
