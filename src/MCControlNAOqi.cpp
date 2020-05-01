@@ -17,11 +17,6 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       host(host),
       port(port)
 {
-  /* Disable gripper safety triggers and change max velocity */
-  globalController.robot().gripper("r_gripper").actualCommandDiffTrigger(1);
-  globalController.robot().gripper("l_gripper").actualCommandDiffTrigger(1);
-  globalController.robot().gripper("r_gripper").percentVMAX(0.15);
-  globalController.robot().gripper("l_gripper").percentVMAX(0.15);
 
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
