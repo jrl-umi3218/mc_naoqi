@@ -64,6 +64,16 @@ class MCControlNAOqi
   void servo(const bool state);
 
   /**
+   * @brief Set the wheels stiffness to max value or switch off
+   * Connect a preproccess callback to DCM loop
+   *
+   * @param state
+   *  true: Turn on the wheels actuators
+   *  false: Turn off the wheels actuators
+   */
+  void wheelsServo(const bool state);
+
+  /**
    * @brief Return a reference to the global mc_rtc controller
    */
   mc_control::MCGlobalController& controller();
@@ -93,6 +103,10 @@ class MCControlNAOqi
   /*! Servo on/off (joint stiffness 0 if off) */
   bool servoState = false;
   std::string servoButtonText_ = "Motors ON/OFF";
+
+  /*! Wheels servo on/off */
+  bool wheelsServoState = false;
+  std::string wheelsServoButtonText_ = "Wheels ON/OFF";
 
   /* Sensor information */
   /*! Encoder values */
@@ -164,6 +178,7 @@ class MCControlNAOqi
 
   /* Enable or disable custom safety reflex */
   bool wheelsOffOnBumperPressed = true;
+  bool wheelsOffOnBumperPressedState = false;
 
   /* Name of the speakers device in mc_rtc RobotModule */
   std::string speakerDeviceName = "Speakers";

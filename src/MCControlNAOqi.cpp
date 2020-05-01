@@ -32,8 +32,15 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
                   { return this->controllerToRun_; },
                   [this](const std::string & in){ this->controllerToRun_ = in; }), // controller to start (e.g. Posture, FSM,...)
     mc_rtc::gui::Button(controllerButtonText_, [this]() { startOrStop(!controllerStartedState); }), // TODO sart/stop the controllerToRun_
-    mc_rtc::gui::Button(servoButtonText_, [this]() { servo(!servoState); })
+    mc_rtc::gui::Button(servoButtonText_, [this]() { servo(!servoState); }),
+    mc_rtc::gui::Button(wheelsServoButtonText_, [this]() { wheelsServo(!wheelsServoState); })
   );
+
+  if(globalController.robot().name() == "pepper"){
+    globalController.controller().gui()->addElement({"NAQqi"},
+      mc_rtc::gui::Button(wheelsServoButtonText_, [this]() { wheelsServo(!wheelsServoState); })
+    );
+  }
 
   /* Don't start running controller before commanded `start` */
   globalController.running = false;
@@ -461,13 +468,14 @@ void MCControlNAOqi::servo(const bool state)
         mc_naoqi_dcm.call<void>("setJointAngles", angles);
       }
 
-      /* Make sure Pepper wheels actuators are not commanded to move before turning motors on */
       if(globalController.robot().name() == "pepper"){
         /* Enable mobile base safety reflex */
-        if(wheelsOffOnBumperPressed){
-          mc_naoqi_dcm.call<void>("bumperSafetyReflex", true);
+        if(wheelsOffOnBumperPressed && !wheelsOffOnBumperPressedState){
+          mc_naoqi_dcm.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState);
+          wheelsOffOnBumperPressedState = !wheelsOffOnBumperPressedState;
         }
 
+        /* Make sure Pepper wheels actuators are not commanded to move before turning motors on */
         mc_naoqi_dcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
       }
 
@@ -481,7 +489,9 @@ void MCControlNAOqi::servo(const bool state)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       servoState = true;
+      wheelsServoState = true;
       servoButtonText_ = "Motors OFF";
+      wheelsServoButtonText_ = "Wheels OFF";
       LOG_WARNING("Motors ON")
       // end of servo ON
     }
@@ -502,8 +512,9 @@ void MCControlNAOqi::servo(const bool state)
         }
 
         /* Disable mobile base safety reflex */
-        if(wheelsOffOnBumperPressed){
-          mc_naoqi_dcm.call<void>("bumperSafetyReflex", false);
+        if(wheelsOffOnBumperPressed && wheelsOffOnBumperPressedState){
+          mc_naoqi_dcm.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState);
+          wheelsOffOnBumperPressedState = !wheelsOffOnBumperPressedState;
         }
 
         /* Hide tablet image */
@@ -531,13 +542,42 @@ void MCControlNAOqi::servo(const bool state)
         LOG_INFO("Safety reflexes reactivated")
       }
       servoState = false;
+      wheelsServoState = false;
       servoButtonText_ = "Motors ON";
+      wheelsServoButtonText_ = "Wheels ON";
       LOG_WARNING("Motors OFF")
       // end of servo OFF
     }
   }else{
     LOG_ERROR("Host is virtual robot, cannot turn ON/OFF motors")
   }
+}
+
+void MCControlNAOqi::wheelsServo(bool state){
+  if(state){
+    // zero commanded velocity before turning wheels on for safety
+    mc_naoqi_dcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
+    // gradually turn on wheels actuators
+    for (int i = 1; i <= 100; ++i)
+    {
+      mc_naoqi_dcm.call<void>("setWheelsStiffness", i / 100.);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    wheelsServoState = true;
+    wheelsServoButtonText_ = "Wheels OFF";
+  }else{
+    // switch off wheels
+    mc_naoqi_dcm.call<void>("setWheelsStiffness", 0.);
+    wheelsServoState = false;
+    wheelsServoButtonText_ = "Wheels ON";
+  }
+  // Enable/disable bumpers safety reflex
+  if(wheelsOffOnBumperPressed && !wheelsOffOnBumperPressedState){
+    mc_naoqi_dcm.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState);
+    wheelsOffOnBumperPressedState = !wheelsOffOnBumperPressedState;
+  }
+  // TODO get wheels servo state from DCM module and set wheelsServoState
+  // ...and wheelsServoButtonText_ to false/OFF if wheels were switched off by bumper press
 }
 
 bool MCControlNAOqi::running() { return interfaceRunning; }
