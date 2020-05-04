@@ -328,6 +328,10 @@ void MCControlNAOqi::sensor_thread()
     {
       auto & bumper = globalController.robot().device<mc_pepper::TouchSensor>(b);
       bumper.touch(sensors[sensorOrderMap[b]]);
+      if(bumper.touch() && wheelsOffOnBumperPressed){
+        wheelsServoState = false;
+        wheelsServoButtonText_ = "Wheels ON";
+      }
     }
 
     /* Speakers */
@@ -576,8 +580,6 @@ void MCControlNAOqi::wheelsServo(bool state){
     mc_naoqi_dcm.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState);
     wheelsOffOnBumperPressedState = !wheelsOffOnBumperPressedState;
   }
-  // TODO get wheels servo state from DCM module and set wheelsServoState
-  // ...and wheelsServoButtonText_ to false/OFF if wheels were switched off by bumper press
 }
 
 bool MCControlNAOqi::running() { return interfaceRunning; }
