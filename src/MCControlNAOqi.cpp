@@ -21,9 +21,36 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       host(host),
       port(port)
 {
+  /* Configure interface */
+  if(globalController.configuration().config.has("PublishContactForces")){
+    publish_contact_forces = globalController.configuration().config("PublishContactForces");
+  }else{
+    LOG_WARNING("'PublishContactForces' config entry missing. Using default value: " << publish_contact_forces)
+  }
+  if(globalController.configuration().config.has("UseRobotIMU")){
+    useRobotIMU = globalController.configuration().config("UseRobotIMU");
+  }else{
+    LOG_WARNING("'UseRobotIMU' config entry missing. Using default value: " << useRobotIMU)
+  }
+  if(globalController.configuration().config.has("Blinking")){
+    blinking = globalController.configuration().config("Blinking");
+  }else{
+    LOG_WARNING("'Blinking' config entry missing. Using default value: " << blinking)
+  }
+  if(globalController.configuration().config.has("Talking")){
+    talking = globalController.configuration().config("Talking");
+  }else{
+    LOG_WARNING("'Talking' config entry missing. Using default value: " << talking)
+  }
+  if(globalController.configuration().config.has("MoveMobileBase")){
+    moveMobileBase = globalController.configuration().config("MoveMobileBase");
+  }else{
+    LOG_WARNING("'MoveMobileBase' config entry missing. Using default value: " << moveMobileBase)
+  }
+
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
-  globalController.controller().gui()->addElement({"NAQqi"}, // Can make this element first tab in the gui
+  globalController.controller().gui()->addElement({"NAOqi"}, // Can make this element first tab in the gui
     mc_rtc::gui::StringInput("Host", [this]() { return this->host; }, [this](const std::string & in){ this->host = in; }),
     mc_rtc::gui::NumberInput("Port", [this]() { return this->port; }, [this](unsigned int in){ this->port = in; }),
     mc_rtc::gui::Button("Connect", [this]() { return; }), // implement connect/disconnect
@@ -32,12 +59,11 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
                   { return this->controllerToRun_; },
                   [this](const std::string & in){ this->controllerToRun_ = in; }), // controller to start (e.g. Posture, FSM,...)
     mc_rtc::gui::Button(controllerButtonText_, [this]() { startOrStop(!controllerStartedState); }), // TODO sart/stop the controllerToRun_
-    mc_rtc::gui::Button(servoButtonText_, [this]() { servo(!servoState); }),
-    mc_rtc::gui::Button(wheelsServoButtonText_, [this]() { wheelsServo(!wheelsServoState); })
+    mc_rtc::gui::Button(servoButtonText_, [this]() { servo(!servoState); })
   );
 
   if(globalController.robot().name() == "pepper"){
-    globalController.controller().gui()->addElement({"NAQqi"},
+    globalController.controller().gui()->addElement({"NAOqi"},
       mc_rtc::gui::Button(wheelsServoButtonText_, [this]() { wheelsServo(!wheelsServoState); })
     );
   }
@@ -52,7 +78,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
   }
 
   /* Eye led anomation option */
-  if(enableBlinking){
+  if(blinking){
     msTillBlink = rand() % 6000 + 1000;
   }
 
@@ -143,7 +169,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     if(!globalController.robot().hasDevice<mc_pepper::Speaker>(speakerDeviceName)){
       LOG_WARNING("Robot object does not have a Speaker named " << speakerDeviceName)
       LOG_WARNING("Speaker functionality will not be available")
-      enableTalking = false;
+      talking = false;
     }
 
   }else{
@@ -335,7 +361,7 @@ void MCControlNAOqi::sensor_thread()
     }
 
     /* Speakers */
-    if(enableTalking)
+    if(talking)
     {
       auto & speaker = globalController.robot().device<mc_pepper::Speaker>(speakerDeviceName);
       if(speaker.hasSomethingToSay())
@@ -401,7 +427,7 @@ void MCControlNAOqi::sensor_thread()
     if (elapsed * 1000 > timestep){
       LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << timestep << " ms");
     }
-    else if(timestep - elapsed > timestep/2.0 && enableBlinking){
+    else if(timestep - elapsed > timestep/2.0 && blinking){
       /* Blink if there is enough time after sensors reading until next DCM cicle */
       auto startExtraAnimation = std::chrono::high_resolution_clock::now();
       msTillBlink -= int(timestep + elapsed * 1000);

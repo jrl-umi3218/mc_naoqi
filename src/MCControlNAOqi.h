@@ -158,14 +158,14 @@ class MCControlNAOqi
 
   /*! Eye blinking ability */
   // note: enabling ALAutonomousBlinking works in interactive mode only
-  bool enableBlinking = true;
+  bool blinking = true;
   int msTillBlink;
 
   /*! Enable talking */
-  bool enableTalking = true;
+  bool talking = true;
 
   /*! Mobile base control (Pepper only) */
-  bool moveMobileBase = true;
+  bool moveMobileBase = false;
   unsigned int numWheels = 3;
   double wheel_radius = 0.07; // meters
   std::vector<std::string> wheelNames = {"WheelFL_link", "WheelFR_link", "WheelB_link"};
