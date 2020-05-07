@@ -17,12 +17,13 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       host(host),
       port(port)
 {
+
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
-  globalController.controller().gui()->addElement({"NAQqi"}, // Can make this element first tab in the gui
+  globalController.controller().gui()->addElement({"NAOqi"}, // TODO make this element first tab in the gui
     mc_rtc::gui::StringInput("Host", [this]() { return this->host; }, [this](const std::string & in){ this->host = in; }),
     mc_rtc::gui::NumberInput("Port", [this]() { return this->port; }, [this](unsigned int in){ this->port = in; }),
-    mc_rtc::gui::Button("Connect", [this]() { return; }), // implement connect/disconnect
+    mc_rtc::gui::Button("Connect", [this]() { return; }), // TODO implement connect/disconnect
     mc_rtc::gui::Label("Connection state", [this]() { return this->connectionState; }),
     mc_rtc::gui::StringInput("Controller", [this]()
                   { return this->controllerToRun_; },
@@ -198,10 +199,6 @@ void MCControlNAOqi::control_thread()
           angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
         }
 
-        /* Update gripper state */
-        std::map<std::string, std::vector<double>> gQs = globalController.gripperQ();
-        // TODO make sure active gripper joint values are correctly put into `angles` vector (otherwise robot won't move grippers)
-
         /* Send actuator commands to the robot */
         if(host != "simulation"){
           mc_naoqi_dcm.call<void>("setJointAngles", angles);
@@ -234,6 +231,7 @@ void MCControlNAOqi::control_thread()
     }else{
       globalController.run(); // keep running the gui and plugins
     }
+
     /* Wait until next controller run */
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
     if (elapsed * 1000 > timestep){
