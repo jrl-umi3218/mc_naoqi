@@ -266,10 +266,6 @@ void MCControlNAOqi::control_thread()
           angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
         }
 
-        /* Update gripper state */
-        std::map<std::string, std::vector<double>> gQs = globalController.gripperQ();
-        // TODO make sure active gripper joint values are correctly put into `angles` vector (otherwise robot won't move grippers)
-
         /* Send actuator commands to the robot */
         if(host != "simulation"){
           mc_naoqi_dcm.call<void>("setJointAngles", angles);
@@ -302,6 +298,7 @@ void MCControlNAOqi::control_thread()
     }else{
       globalController.run(); // keep running the gui and plugins
     }
+
     /* Wait until next controller run */
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
     if (elapsed * 1000 > timestep){

@@ -20,7 +20,7 @@ add_definitions(-std=gnu++11)
 set(CXX_DISABLE_WERROR 1)
 
 find_package(Eigen3 REQUIRED)
-find_package(mc_rtc REQUIRED)
+find_package(mc_rtc 1.3.0 REQUIRED)
 find_package(Boost REQUIRED
 	COMPONENTS program_options)
 find_package(mc_pepper REQUIRED)
