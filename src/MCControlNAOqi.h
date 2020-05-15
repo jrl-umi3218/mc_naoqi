@@ -64,6 +64,16 @@ class MCControlNAOqi
   void servo(const bool state);
 
   /**
+   * @brief Set the wheels stiffness to max value or switch off
+   * Connect a preproccess callback to DCM loop
+   *
+   * @param state
+   *  true: Turn on the wheels actuators
+   *  false: Turn off the wheels actuators
+   */
+  void wheelsServo(const bool state);
+
+  /**
    * @brief Return a reference to the global mc_rtc controller
    */
   mc_control::MCGlobalController& controller();
@@ -93,6 +103,10 @@ class MCControlNAOqi
   /*! Servo on/off (joint stiffness 0 if off) */
   bool servoState = false;
   std::string servoButtonText_ = "Motors ON/OFF";
+
+  /*! Wheels servo on/off */
+  bool wheelsServoState = false;
+  std::string wheelsServoButtonText_ = "Wheels ON/OFF";
 
   /* Sensor information */
   /*! Encoder values */
@@ -144,14 +158,14 @@ class MCControlNAOqi
 
   /*! Eye blinking ability */
   // note: enabling ALAutonomousBlinking works in interactive mode only
-  bool enableBlinking = true;
+  bool blinking = true;
   int msTillBlink;
 
   /*! Enable talking */
-  bool enableTalking = false;
+  bool talking = true;
 
   /*! Mobile base control (Pepper only) */
-  bool moveMobileBase = true;
+  bool moveMobileBase = false;
   unsigned int numWheels = 3;
   double wheel_radius = 0.07; // meters
   std::vector<std::string> wheelNames = {"WheelFL_link", "WheelFR_link", "WheelB_link"};
@@ -159,8 +173,20 @@ class MCControlNAOqi
   Eigen::Vector3d mobileBaseSpeedCommand;
   Eigen::Vector3d wheelsSpeedCommand;
 
+  /* Bumper names */
+  std::vector<std::string> bumpers;
+
   /* Enable or disable custom safety reflex */
   bool wheelsOffOnBumperPressed = true;
+  bool wheelsOffOnBumperPressedState = false;
+
+  /* Name of the speakers device in mc_rtc RobotModule */
+  std::string speakerDeviceName = "Speakers";
+
+  /* Name of the visual display device in mc_rtc RobotModule */
+  std::string displayDeviceName = "Tablet";
+  bool enableVisualDisplay = true;
+
 
 public:
   /* ROS topic monitoring thread */

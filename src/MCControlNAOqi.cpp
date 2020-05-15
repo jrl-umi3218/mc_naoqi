@@ -5,6 +5,10 @@
 // SpaceVecAlg
 #include <SpaceVecAlg/Conversions.h>
 
+// mc_pepper
+#include <mc_pepper/devices/Speaker.h>
+#include <mc_pepper/devices/TouchSensor.h>
+#include <mc_pepper/devices/VisualDisplay.h>
 
 namespace mc_naoqi
 {
@@ -17,20 +21,52 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       host(host),
       port(port)
 {
+  /* Configure interface */
+  if(globalController.configuration().config.has("PublishContactForces")){
+    publish_contact_forces = globalController.configuration().config("PublishContactForces");
+  }else{
+    LOG_WARNING("'PublishContactForces' config entry missing. Using default value: " << publish_contact_forces)
+  }
+  if(globalController.configuration().config.has("UseRobotIMU")){
+    useRobotIMU = globalController.configuration().config("UseRobotIMU");
+  }else{
+    LOG_WARNING("'UseRobotIMU' config entry missing. Using default value: " << useRobotIMU)
+  }
+  if(globalController.configuration().config.has("Blinking")){
+    blinking = globalController.configuration().config("Blinking");
+  }else{
+    LOG_WARNING("'Blinking' config entry missing. Using default value: " << blinking)
+  }
+  if(globalController.configuration().config.has("Talking")){
+    talking = globalController.configuration().config("Talking");
+  }else{
+    LOG_WARNING("'Talking' config entry missing. Using default value: " << talking)
+  }
+  if(globalController.configuration().config.has("MoveMobileBase")){
+    moveMobileBase = globalController.configuration().config("MoveMobileBase");
+  }else{
+    LOG_WARNING("'MoveMobileBase' config entry missing. Using default value: " << moveMobileBase)
+  }
 
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
-  globalController.controller().gui()->addElement({"NAOqi"}, // TODO make this element first tab in the gui
+  globalController.controller().gui()->addElement({"NAOqi"}, // Can make this element first tab in the gui
     mc_rtc::gui::StringInput("Host", [this]() { return this->host; }, [this](const std::string & in){ this->host = in; }),
     mc_rtc::gui::NumberInput("Port", [this]() { return this->port; }, [this](unsigned int in){ this->port = in; }),
-    mc_rtc::gui::Button("Connect", [this]() { return; }), // TODO implement connect/disconnect
-    mc_rtc::gui::Label("Connection state", [this]() { return this->connectionState; }),
+    mc_rtc::gui::Button("Connect", [this]() { return; }), // implement connect/disconnect
+    mc_rtc::gui::Label("Connection status", [this]() { return this->connectionState; }),
     mc_rtc::gui::StringInput("Controller", [this]()
                   { return this->controllerToRun_; },
                   [this](const std::string & in){ this->controllerToRun_ = in; }), // controller to start (e.g. Posture, FSM,...)
     mc_rtc::gui::Button(controllerButtonText_, [this]() { startOrStop(!controllerStartedState); }), // TODO sart/stop the controllerToRun_
     mc_rtc::gui::Button(servoButtonText_, [this]() { servo(!servoState); })
   );
+
+  if(globalController.robot().name() == "pepper"){
+    globalController.controller().gui()->addElement({"NAOqi"},
+      mc_rtc::gui::Button(wheelsServoButtonText_, [this]() { wheelsServo(!wheelsServoState); })
+    );
+  }
 
   /* Don't start running controller before commanded `start` */
   globalController.running = false;
@@ -42,7 +78,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
   }
 
   /* Eye led anomation option */
-  if(enableBlinking){
+  if(blinking){
     msTillBlink = rand() % 6000 + 1000;
   }
 
@@ -71,11 +107,20 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     mc_naoqi_dcm = al_broker->service("MCNAOqiDCM");
     al_launcher = al_broker->service("ALLauncher");
     if (globalController.robot().name() == "pepper"){
+
+      /* Check  that mc_rc Robot object has visual display*/
+      if(!globalController.robot().hasDevice<mc_pepper::VisualDisplay>(displayDeviceName)){
+        LOG_WARNING("Pepper Robot object does not have a VisualDisplay named " << displayDeviceName)
+        LOG_WARNING("Visual display functionality will not be available from controller")
+        enableVisualDisplay = false;
+      }
+      /* Tablet service used by the mc_naoqi interface */
       al_tabletservice = al_broker->service("ALTabletService");
+
       /* Compute wheels jacobian for Pepper mobile base control */
       if(moveMobileBase){
         for(unsigned int i = 0; i < numWheels; i++){
-          // TODO asses that the order of wheels is the same in nao_fastgetsetdcm and in wheelNames
+          // TODO asses that the order of wheels is the same in mc_naoqi_dcm and in wheelNames
           sva::PTransformd base_X_wheel = globalController.robot().X_b1_b2("base_link", wheelNames[i]);
           Eigen::Matrix4d hom_base_X_wheel = sva::conversions::toHomogeneous(base_X_wheel, sva::conversions::RightHanded);
           wheelsJacobian(i,0) = hom_base_X_wheel(0,1);
@@ -96,7 +141,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       sensorOrderMap[sensorName] = i;
     }
 
-    /* Check that actuator order is the same everywhere */
+    /* Check that actuator order and names is the same everywhere */
     std::vector<std::string> jointsOrder = mc_naoqi_dcm.call<std::vector<std::string>>("getJointOrder");
     for(unsigned int i = 0; i<globalController.robot().refJointOrder().size();i++){
       if(globalController.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
@@ -105,6 +150,28 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       }
     }
     LOG_INFO("Joints reference order check: OK")
+
+    /* Check that bumpers exist in mc_rtc Robot object (thier name should be the same as in local DCM module) */
+    std::vector<std::string> bumperNames = mc_naoqi_dcm.call<std::vector<std::string>>("bumperNames");
+    for (auto bn : bumperNames) {
+      if(!globalController.robot().hasDevice<mc_pepper::TouchSensor>(bn)){
+        LOG_WARNING("Robot object does not have a TouchSensor named " << bn)
+        LOG_WARNING("Bumper functionality will not be available for " << bn)
+      }else if(sensorOrderMap.find(bn) == sensorOrderMap.end()){
+        LOG_WARNING("Robot local DCM module does not have sensor entry for " << bn)
+        LOG_WARNING("Bumper functionality will not be available for " << bn)
+      }else{
+        bumpers.push_back(bn);
+      }
+    }
+
+    /* Check that mc_rtc Robot object has speakers */
+    if(!globalController.robot().hasDevice<mc_pepper::Speaker>(speakerDeviceName)){
+      LOG_WARNING("Robot object does not have a Speaker named " << speakerDeviceName)
+      LOG_WARNING("Speaker functionality will not be available")
+      talking = false;
+    }
+
   }else{
     connectionState = "virtual robot";
     LOG_WARNING("Host is '" << host << "'. Running simulation only. No connection to real robot.")
@@ -279,6 +346,29 @@ void MCControlNAOqi::sensor_thread()
       rateIn(2) = sensors[sensorOrderMap["GyroscopeZ"]];
     }
 
+    /* Bumpers */
+    for(auto& b : bumpers)
+    {
+      auto & bumper = globalController.robot().device<mc_pepper::TouchSensor>(b);
+      bumper.touch(sensors[sensorOrderMap[b]]);
+      if(bumper.touch() && wheelsOffOnBumperPressed){
+        wheelsServoState = false;
+        wheelsServoButtonText_ = "Wheels ON";
+      }
+    }
+
+    /* Speakers */
+    if(talking)
+    {
+      auto & speaker = globalController.robot().device<mc_pepper::Speaker>(speakerDeviceName);
+      if(speaker.hasSomethingToSay())
+      {
+       // Non-blocking call to ALTextToSpeech
+       mc_naoqi_dcm.post("sayText", speaker.say());
+       LOG_INFO("Saying sentence in this loop")
+      }
+    }
+
     /* Sensors specific to NAO robot */
     std::map<std::string, sva::ForceVecd> wrenches;
     if (globalController.robot().name() == "nao")
@@ -291,9 +381,25 @@ void MCControlNAOqi::sensor_thread()
       wrenches["RF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
       globalController.setWrenches(wrenches);
     }
-
-    /* Sensors specific to Pepper robot */
-    // TODO merge from topic/GenericSensor patch
+    /* Devices specific to Pepper robot */
+    else if (globalController.robot().name() == "pepper")
+    {
+      /* VisualDisplay */
+      if(enableVisualDisplay)
+      {
+        auto & tablet = globalController.robot().device<mc_pepper::VisualDisplay>(displayDeviceName);
+        if(tablet.newURL())
+        {
+          // Non-blocking call to ALTabletService
+          al_tabletservice.post("showImage", tablet.display());
+          LOG_INFO("Showing image in this loop")
+        }
+        if(tablet.reset()){
+          al_tabletservice.post("hideImage");
+          tablet.reset(false);
+        }
+      }
+    }
 
     /* Send sensor readings to mc_rtc controller */
     globalController.setEncoderValues(qIn);
@@ -318,12 +424,12 @@ void MCControlNAOqi::sensor_thread()
     if (elapsed * 1000 > timestep){
       LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << timestep << " ms");
     }
-    else if(timestep - elapsed > timestep/2.0 && enableBlinking){
+    else if(timestep - elapsed > timestep/2.0 && blinking){
       /* Blink if there is enough time after sensors reading until next DCM cicle */
       auto startExtraAnimation = std::chrono::high_resolution_clock::now();
       msTillBlink -= int(timestep + elapsed * 1000);
       if(msTillBlink<=0){
-        mc_naoqi_dcm.call<void>("blink");
+        mc_naoqi_dcm.post("blink");
         msTillBlink = rand() % 6000 + 1000;
       }
       double elapsedExtraAnimation = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - startExtraAnimation).count();
@@ -374,7 +480,7 @@ void MCControlNAOqi::servo(const bool state)
         /* Display a local image located in /opt/aldebaran/www/apps/media/html/
            Custom image needs to be loaded to the robot first
            The ip of the robot from the tablet is 198.18.0.1 */
-        al_tabletservice.call<bool>("showImage", "http://198.18.0.1/apps/media/tablet_screen.png");
+        al_tabletservice.post("showImage", "http://198.18.0.1/apps/media/tablet_screen.png");
       }
 
       /* If controller is not running, set joint angle commands to current joint state from encoders */
@@ -389,13 +495,14 @@ void MCControlNAOqi::servo(const bool state)
         mc_naoqi_dcm.call<void>("setJointAngles", angles);
       }
 
-      /* Make sure Pepper wheels actuators are not commanded to move before turning motors on */
       if(globalController.robot().name() == "pepper"){
         /* Enable mobile base safety reflex */
-        if(wheelsOffOnBumperPressed){
-          mc_naoqi_dcm.call<void>("bumperSafetyReflex", true);
+        if(wheelsOffOnBumperPressed && !wheelsOffOnBumperPressedState){
+          mc_naoqi_dcm.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState);
+          wheelsOffOnBumperPressedState = !wheelsOffOnBumperPressedState;
         }
 
+        /* Make sure Pepper wheels actuators are not commanded to move before turning motors on */
         mc_naoqi_dcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
       }
 
@@ -409,7 +516,9 @@ void MCControlNAOqi::servo(const bool state)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       servoState = true;
+      wheelsServoState = true;
       servoButtonText_ = "Motors OFF";
+      wheelsServoButtonText_ = "Wheels OFF";
       LOG_WARNING("Motors ON")
       // end of servo ON
     }
@@ -430,12 +539,13 @@ void MCControlNAOqi::servo(const bool state)
         }
 
         /* Disable mobile base safety reflex */
-        if(wheelsOffOnBumperPressed){
-          mc_naoqi_dcm.call<void>("bumperSafetyReflex", false);
+        if(wheelsOffOnBumperPressed && wheelsOffOnBumperPressedState){
+          mc_naoqi_dcm.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState);
+          wheelsOffOnBumperPressedState = !wheelsOffOnBumperPressedState;
         }
 
         /* Hide tablet image */
-        al_tabletservice.call<void>("hideImage");
+        al_tabletservice.post("hideImage");
       }
 
       /* Disconnect the mc_rtc joint update callback from robot's DCM loop */
@@ -459,12 +569,39 @@ void MCControlNAOqi::servo(const bool state)
         LOG_INFO("Safety reflexes reactivated")
       }
       servoState = false;
+      wheelsServoState = false;
       servoButtonText_ = "Motors ON";
+      wheelsServoButtonText_ = "Wheels ON";
       LOG_WARNING("Motors OFF")
       // end of servo OFF
     }
   }else{
     LOG_ERROR("Host is virtual robot, cannot turn ON/OFF motors")
+  }
+}
+
+void MCControlNAOqi::wheelsServo(bool state){
+  if(state){
+    // zero commanded velocity before turning wheels on for safety
+    mc_naoqi_dcm.call<void>("setWheelSpeed", 0.0, 0.0, 0.0);
+    // gradually turn on wheels actuators
+    for (int i = 1; i <= 100; ++i)
+    {
+      mc_naoqi_dcm.call<void>("setWheelsStiffness", i / 100.);
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    wheelsServoState = true;
+    wheelsServoButtonText_ = "Wheels OFF";
+  }else{
+    // switch off wheels
+    mc_naoqi_dcm.call<void>("setWheelsStiffness", 0.);
+    wheelsServoState = false;
+    wheelsServoButtonText_ = "Wheels ON";
+  }
+  // Enable/disable bumpers safety reflex
+  if(wheelsOffOnBumperPressed && !wheelsOffOnBumperPressedState){
+    mc_naoqi_dcm.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState);
+    wheelsOffOnBumperPressedState = !wheelsOffOnBumperPressedState;
   }
 }
 

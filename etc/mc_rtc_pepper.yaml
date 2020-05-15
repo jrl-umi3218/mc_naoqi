@@ -23,7 +23,6 @@ EnabledObservers: [Encoder]
 RunObservers: [Encoder]
 UpdateObservers: [Encoder]
 
-
 # Specific configuration for each observer
 Observers:
   Encoder:
@@ -37,18 +36,18 @@ Timestep: 0.012
 # Set to true or false to enable/disable respectively
 Log: true
 
-# LogPolicy dictates whether logging-related disk operations happen in a
-# separate thread ("threaded") or in the same thread as the run() loop
-# ("non-threaded"). This defaults to the non-threaded policy. On real-time
-# systems, the threaded policy is advised
-# LogPolicy: threaded
-
 # LogDirectory dictates where the log files will be stored, defaults to
 # system temp directory
 LogDirectory: /tmp
 
 # The log file will have the name [LogTemplate]-[ControllerName]-[date].log
 LogTemplate: mc-control
+
+# Logging-related disk operations happen in a separate thread
+LogPolicy: threaded
+
+# ROS publishing time step
+PublishTimeStep: 0.02
 
 # GUIServer section
 GUIServer:
@@ -82,25 +81,13 @@ GUIServer:
   #   # the PULL socket
   #   Ports: [8080, 8081]
 
-# The following option change the verbosity of the controller and robot
-# loader
+# The following option change the verbosity of the controller and robot loader
 VerboseLoader: false
 
-# The following option is used to disable controller/robot creation sandboxing
-# This option only affects Linux
-# UseSandbox: true
-
-# The following options are used to control the location of the
-# controllers', robots' and observers' modules (libraries)
-# The paths added by this option are added to the default path
-# ControllerModulePaths: [/one/path/to/controller/, /another/path/]
-# RobotModulePaths: [/one/path/to/robot/, /another/path/]
-# ObserverModulePaths: [/one/path/to/observer/, /another/path/]
-
-# The following options are used to clear the default loading path
-# for controllers, robots and observers respectively
-# This is only useful to run test on a machine where mc_rtc has
-# already been installed
-# ClearControllerModulePath: false
-# ClearRobotModulePath: false
-# ClearObserverModulePath: false
+# Interface specific parameters
+PublishContactForces: true
+UseRobotIMU: false
+Blinking: true
+Talking: true
+# Uncomment line below to enable mobile base movements
+#MoveMobileBase: true
