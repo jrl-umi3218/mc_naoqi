@@ -31,7 +31,7 @@ Observers:
     UpdateVelocity: control
     Log: true
 
-# Controller timestep
+# Controller timestep (s)
 Timestep: 0.012
 # Set to true or false to enable/disable respectively
 Log: true
