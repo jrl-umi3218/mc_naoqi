@@ -25,27 +25,27 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
   if(globalController.configuration().config.has("PublishContactForces")){
     publish_contact_forces = globalController.configuration().config("PublishContactForces");
   }else{
-    LOG_WARNING("'PublishContactForces' config entry missing. Using default value: " << publish_contact_forces)
+    mc_rtc::log::warning("'PublishContactForces' config entry missing. Using default value: {}", publish_contact_forces);
   }
   if(globalController.configuration().config.has("UseRobotIMU")){
     useRobotIMU = globalController.configuration().config("UseRobotIMU");
   }else{
-    LOG_WARNING("'UseRobotIMU' config entry missing. Using default value: " << useRobotIMU)
+    mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU);
   }
   if(globalController.configuration().config.has("Blinking")){
     blinking = globalController.configuration().config("Blinking");
   }else{
-    LOG_WARNING("'Blinking' config entry missing. Using default value: " << blinking)
+    mc_rtc::log::warning("'Blinking' config entry missing. Using default value: {}", blinking);
   }
   if(globalController.configuration().config.has("Talking")){
     talking = globalController.configuration().config("Talking");
   }else{
-    LOG_WARNING("'Talking' config entry missing. Using default value: " << talking)
+    mc_rtc::log::warning("'Talking' config entry missing. Using default value: {}", talking);
   }
   if(globalController.configuration().config.has("MoveMobileBase")){
     moveMobileBase = globalController.configuration().config("MoveMobileBase");
   }else{
-    LOG_WARNING("'MoveMobileBase' config entry missing. Using default value: " << moveMobileBase)
+    mc_rtc::log::warning("'MoveMobileBase' config entry missing. Using default value: {}", moveMobileBase);
   }
 
   /* Set up interface GUI tab */
@@ -74,7 +74,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
   /* Start ROS thread to monitor ROS topics if required */
   if(useROS){
     spin_th = std::thread(std::bind(&MCControlNAOqi::monitorROSTopic, this));
-    LOG_INFO("ROS thread started")
+    mc_rtc::log::info("ROS thread started");
   }
 
   /* Eye led anomation option */
@@ -87,9 +87,8 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     /* Create Naoqi session */
     al_broker = qi::makeSession();
     /* Try to connect via TCP to the robot */
-    LOG_INFO("MCControlNAOqi: Connecting to " << globalController.robot().name()
-                                              << " robot on address " << host
-                                              << ":" << port);
+    mc_rtc::log::info("MCControlNAOqi: Connecting to {} robot on address {}:{}", 
+                                            globalController.robot().name(), host, port);
     std::stringstream strstr;
     try{
       strstr << "tcp://" << host << ":" << port;
@@ -100,7 +99,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       std::cout << "Cannot connect to session: " << e.what() << std::endl;
       al_broker->close();
     }
-    LOG_SUCCESS("Connected to " << host)
+    mc_rtc::log::success("Connected to {}", host);
     connectionState = strstr.str() + " OK";
 
     /* Connect to local robot modules */
@@ -110,8 +109,8 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
 
       /* Check  that mc_rc Robot object has visual display*/
       if(!globalController.robot().hasDevice<mc_pepper::VisualDisplay>(displayDeviceName)){
-        LOG_WARNING("Pepper Robot object does not have a VisualDisplay named " << displayDeviceName)
-        LOG_WARNING("Visual display functionality will not be available from controller")
+        mc_rtc::log::warning("Pepper Robot object does not have a VisualDisplay named {}", displayDeviceName);
+        mc_rtc::log::warning("Visual display functionality will not be available from controller");
         enableVisualDisplay = false;
       }
       /* Tablet service used by the mc_naoqi interface */
@@ -128,7 +127,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
           wheelsJacobian(i,2) = -hom_base_X_wheel(1,3)*hom_base_X_wheel(0,1) + hom_base_X_wheel(0,3)*hom_base_X_wheel(1,1);
         }
         wheelsJacobian /= -wheel_radius;
-        LOG_INFO("Pepper wheels jacobian computed")
+        mc_rtc::log::info("Pepper wheels jacobian computed");
       }
     }
 
@@ -136,7 +135,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     std::vector<std::string> sensorsOrder = mc_naoqi_dcm.call<std::vector<std::string>>("getSensorsOrder");
     for (size_t i = 0; i < sensorsOrder.size(); i++)
     {
-      LOG_INFO("Sensor[" << i << "]: " << sensorsOrder[i]);
+      mc_rtc::log::info("Sensor[{}]: {}", i, sensorsOrder[i]);
       const auto& sensorName = sensorsOrder[i];
       sensorOrderMap[sensorName] = i;
     }
@@ -145,21 +144,21 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     std::vector<std::string> jointsOrder = mc_naoqi_dcm.call<std::vector<std::string>>("getJointOrder");
     for(unsigned int i = 0; i<globalController.robot().refJointOrder().size();i++){
       if(globalController.robot().refJointOrder()[i] != jointsOrder[i] || jointsOrder[i] != sensorsOrder[i].substr(std::string("Encoder").length())){
-        LOG_WARNING(globalController.robot().refJointOrder()[i] << "!=" << jointsOrder[i] << "!=" << sensorsOrder[i].substr(std::string("Encoder").length()))
-        LOG_ERROR_AND_THROW(std::runtime_error, "Joints reference order does not match! Check the definitions in the remote and local robot modules.")
+        mc_rtc::log::error("{} != {} != {}", globalController.robot().refJointOrder()[i], jointsOrder[i], sensorsOrder[i].substr(std::string("Encoder").length()));
+        mc_rtc::log::error_and_throw<std::runtime_error>("Joints reference order does not match! Check the definitions in the remote and local robot modules");
       }
     }
-    LOG_INFO("Joints reference order check: OK")
+    mc_rtc::log::info("Joints reference order check: OK");
 
     /* Check that bumpers exist in mc_rtc Robot object (thier name should be the same as in local DCM module) */
     std::vector<std::string> bumperNames = mc_naoqi_dcm.call<std::vector<std::string>>("bumperNames");
     for (auto bn : bumperNames) {
       if(!globalController.robot().hasDevice<mc_pepper::TouchSensor>(bn)){
-        LOG_WARNING("Robot object does not have a TouchSensor named " << bn)
-        LOG_WARNING("Bumper functionality will not be available for " << bn)
+        mc_rtc::log::warning("Robot object does not have a TouchSensor named {}", bn);
+        mc_rtc::log::warning("Bumper functionality will not be available for {}", bn);
       }else if(sensorOrderMap.find(bn) == sensorOrderMap.end()){
-        LOG_WARNING("Robot local DCM module does not have sensor entry for " << bn)
-        LOG_WARNING("Bumper functionality will not be available for " << bn)
+        mc_rtc::log::warning("Robot local DCM module does not have sensor entry for {}", bn);
+        mc_rtc::log::warning("Bumper functionality will not be available for {}", bn);
       }else{
         bumpers.push_back(bn);
       }
@@ -167,14 +166,14 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
 
     /* Check that mc_rtc Robot object has speakers */
     if(!globalController.robot().hasDevice<mc_pepper::Speaker>(speakerDeviceName)){
-      LOG_WARNING("Robot object does not have a Speaker named " << speakerDeviceName)
-      LOG_WARNING("Speaker functionality will not be available")
+      mc_rtc::log::warning("Robot object does not have a Speaker named {}", speakerDeviceName);
+      mc_rtc::log::warning("Speaker functionality will not be available");
       talking = false;
     }
 
   }else{
     connectionState = "virtual robot";
-    LOG_WARNING("Host is '" << host << "'. Running simulation only. No connection to real robot.")
+    mc_rtc::log::warning("Host is '{}'. Running simulation only. No connection to real robot.", host);
   }
 
   /* Control thread will run QP (every timestep ms) and send result joint commands to the robot */
@@ -219,7 +218,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     init_t265_rot_from_kin = Eigen::Quaterniond(globalController.realRobot().bodyPosW("t265_pose").rotation());
   }
 
-  LOG_INFO("MCControlNAOqi interface initialized")
+  mc_rtc::log::info("MCControlNAOqi interface initialized");
 }
 
 /* Destructor */
@@ -240,10 +239,10 @@ void MCControlNAOqi::control_thread()
 {
   /* Wait for first sensor readings from sensor_thread */
   if(host != "simulation"){
-    LOG_INFO("[Control] Waiting for sensor data");
+    mc_rtc::log::info("[Control] Waiting for sensor data");
     std::unique_lock<std::mutex> lk(control_mut);
     control_cv.wait(lk);
-    LOG_INFO("[Control] Got sensor data, ready for control");
+    mc_rtc::log::info("[Control] Got sensor data, ready for control");
   }
 
   /* Vector of joint angles to be sent to robot actuators */
@@ -302,12 +301,12 @@ void MCControlNAOqi::control_thread()
     /* Wait until next controller run */
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
     if (elapsed * 1000 > timestep){
-      LOG_WARNING("[Control] Loop time " << elapsed * 1000 << " exeeded timestep of " << timestep << " ms");
+      mc_rtc::log::warning("[Control] Loop time {} exeeded timestep of {} ms", elapsed * 1000, timestep);
     }else{
       std::this_thread::sleep_for(std::chrono::milliseconds(timestep - static_cast<unsigned int>(elapsed * 1000)));
     }
   }
-  LOG_INFO("MCControlNAOqi running thread stopped");
+  mc_rtc::log::info("MCControlNAOqi running thread stopped");
 }
 
 void MCControlNAOqi::sensor_thread()
@@ -365,7 +364,7 @@ void MCControlNAOqi::sensor_thread()
       {
        // Non-blocking call to ALTextToSpeech
        mc_naoqi_dcm.post("sayText", speaker.say());
-       LOG_INFO("Saying sentence in this loop")
+       mc_rtc::log::info("Saying sentence in this loop");
       }
     }
 
@@ -392,7 +391,7 @@ void MCControlNAOqi::sensor_thread()
         {
           // Non-blocking call to ALTabletService
           al_tabletservice.post("showImage", tablet.display());
-          LOG_INFO("Showing image in this loop")
+          mc_rtc::log::info("Showing image in this loop");
         }
         if(tablet.reset()){
           al_tabletservice.post("hideImage");
@@ -422,7 +421,7 @@ void MCControlNAOqi::sensor_thread()
     control_cv.notify_one();
     double elapsed = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start).count();
     if (elapsed * 1000 > timestep){
-      LOG_WARNING("[Sensors] Loop time " << elapsed * 1000 << " exeeded timestep " << timestep << " ms");
+      mc_rtc::log::warning("[Sensors] Loop time {} exeeded timestep {} ms", elapsed * 1000, timestep);
     }
     else if(timestep - elapsed > timestep/2.0 && blinking){
       /* Blink if there is enough time after sensors reading until next DCM cicle */
@@ -448,10 +447,10 @@ void MCControlNAOqi::servo(const bool state)
 
     if (state) // Servo ON
     {
-      LOG_WARNING("Turning ON the motors")
+      mc_rtc::log::warning("Turning ON the motors");
       /* Deactivate safety reflexes if ALMotion module is running */
       if(al_launcher.call<bool>("isModulePresent", "ALMotion")){
-        LOG_INFO("ALMotion module is active on the robot. Disabling safety reflexes...")
+        mc_rtc::log::info("ALMotion module is active on the robot. Disabling safety reflexes...");
         try{
           qi::AnyObject al_motion = al_broker->service("ALMotion");
           al_motion.call<bool>("setCollisionProtectionEnabled", "Arms", false);
@@ -471,7 +470,7 @@ void MCControlNAOqi::servo(const bool state)
       /* Connect the mc_rtc joint update callback to robot's DCM loop */
       if(!isConnected2DCM){
         mc_naoqi_dcm.call<void>("startLoop");
-        LOG_INFO("Connected to DCM loop")
+        mc_rtc::log::info("Connected to DCM loop");
       }
 
       if(globalController.robot().name() == "pepper"){
@@ -519,12 +518,12 @@ void MCControlNAOqi::servo(const bool state)
       wheelsServoState = true;
       servoButtonText_ = "Motors OFF";
       wheelsServoButtonText_ = "Wheels OFF";
-      LOG_WARNING("Motors ON")
+      mc_rtc::log::warning("Motors ON");
       // end of servo ON
     }
     else
     { /* Servo OFF */
-      LOG_WARNING("Turning OFF the motors")
+      mc_rtc::log::warning("Turning OFF the motors");
       /* Gradually decrease stiffness over 1s to prevent jerky motion */
       for (int i = 1; i <= 100; ++i)
       {
@@ -551,12 +550,12 @@ void MCControlNAOqi::servo(const bool state)
       /* Disconnect the mc_rtc joint update callback from robot's DCM loop */
       if(isConnected2DCM){
         mc_naoqi_dcm.call<void>("stopLoop");
-        LOG_INFO("Disconnected from DCM loop")
+        mc_rtc::log::info("Disconnected from DCM loop");
       }
 
       /* Re-activate safety reflexes */
       if(al_launcher.call<bool>("isModulePresent", "ALMotion")){
-        LOG_INFO("ALMotion module is active on the robot. Re-activating safety reflexes...")
+        mc_rtc::log::info("ALMotion module is active on the robot. Re-activating safety reflexes...");
         qi::AnyObject al_motion = al_broker->service("ALMotion");
         al_motion.call<bool>("setCollisionProtectionEnabled", "Arms", true);
         al_motion.call<void>("setDiagnosisEffectEnabled", true);
@@ -566,17 +565,17 @@ void MCControlNAOqi::servo(const bool state)
         if(globalController.robot().name() == "pepper"){
           al_motion.call<void>("setPushRecoveryEnabled", true);
         }
-        LOG_INFO("Safety reflexes reactivated")
+        mc_rtc::log::info("Safety reflexes reactivated");
       }
       servoState = false;
       wheelsServoState = false;
       servoButtonText_ = "Motors ON";
       wheelsServoButtonText_ = "Wheels ON";
-      LOG_WARNING("Motors OFF")
+      mc_rtc::log::warning("Motors OFF");
       // end of servo OFF
     }
   }else{
-    LOG_ERROR("Host is virtual robot, cannot turn ON/OFF motors")
+    mc_rtc::log::error("Host is virtual robot, cannot turn ON/OFF motors");
   }
 }
 
@@ -611,11 +610,11 @@ void MCControlNAOqi::startOrStop(const bool state)
 {
 
   if(state){ // don't start if already started
-    LOG_INFO("Starting experiment")
+    mc_rtc::log::info("Starting experiment");
     /* Initialize controller with values from the encoders */
-    LOG_INFO("[Control] Initializing controller");
+    mc_rtc::log::info("[Control] Initializing controller");
     globalController.init(qIn);
-    LOG_INFO("[Control] Controller initialized with sensor data from encoders");
+    mc_rtc::log::info("[Control] Controller initialized with sensor data from encoders");
 
     /* Start running controller */
     globalController.running = true;
@@ -632,10 +631,10 @@ void MCControlNAOqi::startOrStop(const bool state)
     }
     controllerStartedState = true;
     controllerButtonText_ = "Stop";
-    LOG_INFO("Controller stated")
-    LOG_INFO("Experiment started")
+    mc_rtc::log::info("Controller stated");
+    mc_rtc::log::info("Experiment started");
   }else{
-    LOG_INFO("Stopping experiment")
+    mc_rtc::log::info("Stopping experiment");
     /* Stop running controller */
     globalController.running = false;
 
@@ -656,8 +655,8 @@ void MCControlNAOqi::startOrStop(const bool state)
     }
     controllerStartedState = false;
     controllerButtonText_ = "Start";
-    LOG_INFO("Controller Stopped");
-    LOG_INFO("Experiment stopped")
+    mc_rtc::log::info("Controller Stopped");
+    mc_rtc::log::info("Experiment stopped");
   }
 }
 
