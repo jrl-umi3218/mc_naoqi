@@ -8,18 +8,13 @@
 #include <mc_rtc/ros.h>
 #include "nav_msgs/Odometry.h"
 
-namespace mc_control
-{
-class MCGlobalController;
-} /* mc_control */
-
 
 namespace mc_naoqi
 {
 /**
  * @brief Control interface for NAO and PEPPER robots running NAOqi operating system
  */
-class MCControlNAOqi
+struct MCControlNAOqi
 {
  public:
    /**
