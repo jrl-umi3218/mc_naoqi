@@ -43,11 +43,11 @@ namespace
     args >> jn;
     if (controller.robot().hasJoint(jn))
     {
-      LOG_INFO(jn << ": " << controller.robot().mbc().q[controller.robot().jointIndexByName(jn)][0]);
+      mc_rtc::log::info("{}: {}", jn, controller.robot().mbc().q[controller.robot().jointIndexByName(jn)][0]);
     }
     else
     {
-      LOG_ERROR("No joint named " << jn << " in the robot");
+      mc_rtc::log::error("No joint named {} in the robot", jn);
     }
     return true;
   }
@@ -115,7 +115,7 @@ void input_thread(MCControlNAOqi & controlNAOqi)
     /* (Re)start slam */
     else if(token == "ss")
     {
-      LOG_INFO("Initializing V-SLAM")
+      mc_rtc::log::info("Initializing V-SLAM");
       // TODO set realRobot().posW() to Identity (back to world origin)
       // ... Assuming realRobot is not moving
       // ... Get realRobot joints state, compute t265_pose in world frame
@@ -133,13 +133,13 @@ void input_thread(MCControlNAOqi & controlNAOqi)
       bool ret = cli_fn[token](controlNAOqi.controller(), ss2);
       if (!ret)
       {
-        LOG_ERROR("Failed to invoke the previous command");
+        mc_rtc::log::error("Failed to invoke the previous command");
       }
     }
     /* Any other input from terminal is unknown command */
     else
     {
-      LOG_ERROR("Unknow command" << token);
+      mc_rtc::log::error("Unknow command ", token);
     }
   }
 }
@@ -173,13 +173,13 @@ int main(int argc, char **argv)
     std::cout << desc << std::endl;
     return 1;
   }
-  LOG_INFO("MCControlNAOqi - Using conf: " << conf_file);
+  mc_rtc::log::info("MCControlNAOqi - Using conf: {}", conf_file);
 
   /* Create global controller */
   mc_control::MCGlobalController controller(conf_file);
   /* Check that the interface can work with the main controller robot */
   if(controller.robot().name() != "NAO" && controller.robot().name() != "pepper"){
-    LOG_ERROR("MCControlNAOqi: This program can only handle nao and pepper at the moment");
+    mc_rtc::log::error_and_throw<std::runtime_error>("MCControlNAOqi: This program can only handle nao and pepper at the moment");
     return 1;
   }
   /* Create MCControlNAOqi interface */
