@@ -49,10 +49,10 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
 
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
-  globalController.controller().gui()->addElement({"NAOqi"}, // Can make this element first tab in the gui
+  globalController.controller().gui()->addElement({"NAOqi"}, // TODO make this element first tab in the gui panel if possible
     mc_rtc::gui::StringInput("Host", [this]() { return this->host; }, [this](const std::string & in){ this->host = in; }),
     mc_rtc::gui::NumberInput("Port", [this]() { return this->port; }, [this](unsigned int in){ this->port = in; }),
-    mc_rtc::gui::Button("Connect", [this]() { return; }), // implement connect/disconnect
+    mc_rtc::gui::Button("Connect", [this]() { return; }), // TODO implement connect/disconnect
     mc_rtc::gui::Label("Connection status", [this]() { return this->connectionState; }),
     mc_rtc::gui::StringInput("Controller", [this]()
                   { return this->controllerToRun_; },
@@ -70,7 +70,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
   /* Don't start running controller before commanded `start` */
   globalController.running = false;
 
-  /* Start ROS thread to monitor ROS topics if required */
+  /* Start a thread to monitor ROS topics if required */
   if(useROS){
     spin_th = std::thread(std::bind(&MCControlNAOqi::monitorROSTopic, this));
     mc_rtc::log::info("ROS thread started");
