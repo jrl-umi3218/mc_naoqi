@@ -2,7 +2,7 @@
 # What robot is being controlled
 MainRobot: Pepper
 # Enabled controllers
-Enabled: [Posture]
+Enabled: Posture
 
 # Load and run state observers.
 # Order matters here, estimators will be run after each other.
