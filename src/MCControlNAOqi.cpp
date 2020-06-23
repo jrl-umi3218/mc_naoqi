@@ -22,31 +22,30 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
       port(port)
 {
   /* Configure interface */
-  if(globalController.configuration().config.has("PublishContactForces")){
-    publish_contact_forces = globalController.configuration().config("PublishContactForces");
-  }else{
+  if(!globalController.configuration().config.has("PublishContactForces")){
     mc_rtc::log::warning("'PublishContactForces' config entry missing. Using default value: {}", publish_contact_forces);
   }
-  if(globalController.configuration().config.has("UseRobotIMU")){
-    useRobotIMU = globalController.configuration().config("UseRobotIMU");
-  }else{
-    mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU);
+  publish_contact_forces = globalController.configuration().config("PublishContactForces");
+
+  if(!globalController.configuration().config.has("UseRobotIMU")){
+    mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU); 
   }
-  if(globalController.configuration().config.has("Blinking")){
-    blinking = globalController.configuration().config("Blinking");
-  }else{
-    mc_rtc::log::warning("'Blinking' config entry missing. Using default value: {}", blinking);
+  useRobotIMU = globalController.configuration().config("UseRobotIMU");
+
+  if(!globalController.configuration().config.has("Blinking")){
+    mc_rtc::log::warning("'Blinking' config entry missing. Using default value: {}", blinking); 
   }
-  if(globalController.configuration().config.has("Talking")){
-    talking = globalController.configuration().config("Talking");
-  }else{
+  blinking = globalController.configuration().config("Blinking");
+
+  if(!globalController.configuration().config.has("Talking")){
     mc_rtc::log::warning("'Talking' config entry missing. Using default value: {}", talking);
   }
-  if(globalController.configuration().config.has("MoveMobileBase")){
-    moveMobileBase = globalController.configuration().config("MoveMobileBase");
-  }else{
+  talking = globalController.configuration().config("Talking");
+
+  if(!globalController.configuration().config.has("MoveMobileBase")){
     mc_rtc::log::warning("'MoveMobileBase' config entry missing. Using default value: {}", moveMobileBase);
   }
+  moveMobileBase = globalController.configuration().config("MoveMobileBase");
 
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
