@@ -25,27 +25,28 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
   if(!globalController.configuration().config.has("PublishContactForces")){
     mc_rtc::log::warning("'PublishContactForces' config entry missing. Using default value: {}", publish_contact_forces);
   }
-  publish_contact_forces = globalController.configuration().config("PublishContactForces");
+  globalController.configuration().config("PublishContactForces", publish_contact_forces);
+
 
   if(!globalController.configuration().config.has("UseRobotIMU")){
     mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU); 
   }
-  useRobotIMU = globalController.configuration().config("UseRobotIMU");
+  globalController.configuration().config("UseRobotIMU", useRobotIMU);
 
   if(!globalController.configuration().config.has("Blinking")){
     mc_rtc::log::warning("'Blinking' config entry missing. Using default value: {}", blinking); 
   }
-  blinking = globalController.configuration().config("Blinking");
+  globalController.configuration().config("Blinking", blinking);
 
   if(!globalController.configuration().config.has("Talking")){
     mc_rtc::log::warning("'Talking' config entry missing. Using default value: {}", talking);
   }
-  talking = globalController.configuration().config("Talking");
+  globalController.configuration().config("Talking", talking);
 
   if(!globalController.configuration().config.has("MoveMobileBase")){
     mc_rtc::log::warning("'MoveMobileBase' config entry missing. Using default value: {}", moveMobileBase);
   }
-  moveMobileBase = globalController.configuration().config("MoveMobileBase");
+  globalController.configuration().config("MoveMobileBase", moveMobileBase);
 
   /* Set up interface GUI tab */
   controllerToRun_ = globalController.current_controller();
