@@ -91,7 +91,7 @@ void input_thread(MCControlNAOqi & controlNAOqi)
     /* Start the controller (if not started), stop otwerwise */
     if(token == "s")
     {
-      controlNAOqi.startOrStop(!controlNAOqi.controllerStartedState);
+      controlNAOqi.startOrStop(!controlNAOqi.controllerStartedState());
     }
     /* Switch on robot motors */
     else if(token == "on")
@@ -139,7 +139,7 @@ void input_thread(MCControlNAOqi & controlNAOqi)
     /* Any other input from terminal is unknown command */
     else
     {
-      mc_rtc::log::error("Unknow command ", token);
+      mc_rtc::log::error("Unknow command {}", token);
     }
   }
 }
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
   MCControlNAOqi mc_control_naoqi(controller, cfp_ptr, host, port);
 
   /* Create contact force publisher */
-  if(mc_control_naoqi.publish_contact_forces){
+  if(mc_control_naoqi.publishContactForces()){
     cfp_ptr.reset(new ContactForcePublisher(nh_p, controller));
   }
 

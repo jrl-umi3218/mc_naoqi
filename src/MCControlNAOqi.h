@@ -1,36 +1,33 @@
 #pragma once
 
 #include "ContactForcePublisher.h"
-#include <condition_variable>
-
-#include <qi/session.hpp>
-
-#include <mc_rtc/ros.h>
 #include "nav_msgs/Odometry.h"
+#include <condition_variable>
+#include <qi/session.hpp>
+#include <mc_rtc/ros.h>
 
 
 namespace mc_naoqi
 {
 /**
- * @brief Control interface for NAO and PEPPER robots running NAOqi operating system
+ * @brief mc_rtc control interface for NAO and PEPPER robots running NAOqi operating system
  */
 struct MCControlNAOqi
 {
- public:
-   /**
-    * @brief Interface constructor and destructor
-    */
+  /**
+  * @brief Interface constructor and destructor
+  */
   MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
                   const std::string& host, const unsigned int port);
+
   virtual ~MCControlNAOqi();
 
-  /*! Publish contact forces from mc_rtc to ROS */
-  bool publish_contact_forces = true;
+  bool publishContactForces() { return publishContactForces_; };  
 
   /**
    * @brief Is the interface running
    */
-  bool running();
+  bool running() { return interfaceRunning_; }
 
   /**
    * @brief Start or stop the experiment
@@ -40,8 +37,7 @@ struct MCControlNAOqi
    *  false: Stop controller
    */
   void startOrStop(const bool state);
-  bool controllerStartedState = false;
-  std::string controllerButtonText_ = "Start/Stop controller";
+  bool controllerStartedState() { return controllerStartedState_; };
 
   /**
    * @brief Stop the experimnet
@@ -71,9 +67,16 @@ struct MCControlNAOqi
   /**
    * @brief Return a reference to the global mc_rtc controller
    */
-  mc_control::MCGlobalController& controller();
+  mc_control::MCGlobalController& controller() { return globalController_; }
 
  private:
+  /*! Publish contact forces from mc_rtc to ROS */
+  bool publishContactForces_ = true;
+
+  /*! Controller state (started or stopped) */
+  bool controllerStartedState_ = false;
+  std::string controllerButtonText_ = "Start/Stop controller";
+
   /**
    * @brief Thread that sends mc_rtc controller commands to the robot.
    */
@@ -84,23 +87,22 @@ struct MCControlNAOqi
    */
   void sensor_thread();
 
- private:
   /*! Global mc_rtc controller */
-  mc_control::MCGlobalController& globalController;
+  mc_control::MCGlobalController& globalController_;
   std::string controllerToRun_;
 
   /*! Controller timestep expressed in ms */
-  unsigned int timestep;
+  unsigned int timestep_;
 
   /*! Running the mc_naoqi interface */
-  bool interfaceRunning;
+  bool interfaceRunning_;
 
   /*! Servo on/off (joint stiffness 0 if off) */
-  bool servoState = false;
+  bool servoState_ = false;
   std::string servoButtonText_ = "Motors ON/OFF";
 
   /*! Wheels servo on/off */
-  bool wheelsServoState = false;
+  bool wheelsServoState_ = false;
   std::string wheelsServoButtonText_ = "Wheels ON/OFF";
 
   /* Sensor information */
@@ -182,8 +184,6 @@ struct MCControlNAOqi
   std::string displayDeviceName = "Tablet";
   bool enableVisualDisplay = true;
 
-
-public:
   /* ROS topic monitoring thread */
   bool useROS = false;
   std::thread spin_th;
@@ -200,4 +200,4 @@ public:
 
 };
 
-} /* mc_nao */
+} /* mc_naoqi */
