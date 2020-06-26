@@ -10,6 +10,8 @@
 #include <mc_pepper/devices/TouchSensor.h>
 #include <mc_pepper/devices/VisualDisplay.h>
 
+#include <mc_rbdyn/rpy_utils.h>
+
 namespace mc_naoqi
 {
 MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
@@ -185,6 +187,12 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     qIn_.resize(globalController_.robot().refJointOrder().size());
     /* Torque for now is just electric current sensor readings */
     tauIn_.resize(globalController_.robot().refJointOrder().size());
+    /* IMU readings */
+    if(useRobotIMU_){
+      accIn_.resize(3);
+      rpyIn_.resize(3);
+      rateIn_.resize(3);
+    }
     /* Allocate space for reading all sensors from the robot memory */
     numSensors_ = MCNAOqiDCM_.call<int>("numSensors");
     sensors_.resize(numSensors_);
@@ -340,6 +348,10 @@ void MCControlNAOqi::sensor_thread()
       accIn_(1) = sensors_[sensorOrderMap_["AccelerometerY"]];
       accIn_(2) = sensors_[sensorOrderMap_["AccelerometerZ"]];
 
+      rpyIn_(0) = sensors_[sensorOrderMap_["AngleX"]];
+      rpyIn_(1) = sensors_[sensorOrderMap_["AngleY"]];
+      rpyIn_(2) = sensors_[sensorOrderMap_["AngleZ"]];
+
       rateIn_(0) = sensors_[sensorOrderMap_["GyroscopeX"]];
       rateIn_(1) = sensors_[sensorOrderMap_["GyroscopeY"]];
       rateIn_(2) = sensors_[sensorOrderMap_["GyroscopeZ"]];
@@ -404,6 +416,7 @@ void MCControlNAOqi::sensor_thread()
     globalController_.setEncoderValues(qIn_);
     if(useRobotIMU_){
       globalController_.setSensorAcceleration(accIn_);
+      globalController_.setSensorOrientation(Eigen::Quaterniond(mc_rbdyn::rpyToMat(rpyIn_)));
       globalController_.setSensorAngularVelocity(rateIn_);
     }
     //globalController_.controller().realRobot().jointTorques(tauIn_);

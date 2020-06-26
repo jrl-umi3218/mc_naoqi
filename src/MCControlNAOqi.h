@@ -111,7 +111,7 @@ struct MCControlNAOqi
   /*! ElectricCurrent values */
   std::vector<double> tauIn_;
   /*! Orientation sensor */
-  Eigen::Vector3d rpyIn_; // Unused?
+  Eigen::Vector3d rpyIn_;
   /*! Accelerometer */
   Eigen::Vector3d accIn_;
   /*! Angular velocity */
