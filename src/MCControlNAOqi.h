@@ -107,96 +107,95 @@ struct MCControlNAOqi
 
   /* Sensor information */
   /*! Encoder values */
-  std::vector<double> qIn;
+  std::vector<double> qIn_;
   /*! ElectricCurrent values */
-  std::vector<double> tauIn;
+  std::vector<double> tauIn_;
   /*! Orientation sensor */
-  Eigen::Vector3d rpyIn;
+  Eigen::Vector3d rpyIn_; // Unused?
   /*! Accelerometer */
-  Eigen::Vector3d accIn;
+  Eigen::Vector3d accIn_;
   /*! Angular velocity */
-  Eigen::Vector3d rateIn;
+  Eigen::Vector3d rateIn_;
 
   /*! Contact force publisher */
   std::unique_ptr<ContactForcePublisher> &cfp_ptr;
 
   /* Connection information */
   /*! Connection host */
-  std::string host;
+  std::string host_;
   /*! Connection port */
-  unsigned int port;
+  unsigned int port_;
   /*! Connection state */
-  std::string connectionState = "none";
+  std::string connectionState_ = "none";
 
   /* Handles communication with NAOqi */
-  qi::SessionPtr al_broker;
+  qi::SessionPtr ALBroker_;
   /*! Custom DCM module for fast access to NAOqi memory and actuators */
-  qi::AnyObject mc_naoqi_dcm;
+  qi::AnyObject MCNAOqiDCM_;
   /*! Tables service (Pepper only) */
-  qi::AnyObject al_tabletservice;
+  qi::AnyObject ALTabletservice_;
   /*! ALLauncher module (check if needed modules are present on robot) */
-  qi::AnyObject al_launcher;
+  qi::AnyObject ALlauncher_;
 
   /*! Control and sensor threads */
-  std::thread control_th;
+  std::thread controlThread_;
   // Wait for sensor input before starting control
-  std::condition_variable control_cv;
-  std::mutex control_mut;
-  std::thread sensor_th;
+  std::condition_variable controlCV_;
+  std::mutex controlMut_;
+  std::thread sensorThread_;
 
   /*!  Maps sensor name to sensor index */
-  std::map<std::string, size_t> sensorOrderMap;
+  std::map<std::string, size_t> sensorOrderMap_;
   /*! Sensor values read from the robot memory */
-  std::vector<float> sensors;
+  std::vector<float> sensors_;
   /*! Total number of sensors */
-  int numSensors;
+  int numSensors_;
   /*! Use robot IMU sensor */
-  bool useRobotIMU = false;
+  bool useRobotIMU_ = false;
 
   /*! Eye blinking ability */
   // note: enabling ALAutonomousBlinking works in interactive mode only
-  bool blinking = true;
-  int msTillBlink;
+  bool blinking_ = true;
+  int msTillBlink_;
 
   /*! Enable talking */
-  bool talking = true;
+  bool talking_ = true;
 
   /*! Mobile base control (Pepper only) */
-  bool moveMobileBase = false;
-  unsigned int numWheels = 3;
-  double wheel_radius = 0.07; // meters
-  std::vector<std::string> wheelNames = {"WheelFL_link", "WheelFR_link", "WheelB_link"};
-  Eigen::Matrix3d wheelsJacobian;
-  Eigen::Vector3d mobileBaseSpeedCommand;
-  Eigen::Vector3d wheelsSpeedCommand;
+  bool moveMobileBase_ = false;
+  double wheelRadius_ = 0.07; // meters
+  std::vector<std::string> wheelNames_ = {"WheelFL_link", "WheelFR_link", "WheelB_link"};
+  Eigen::Matrix3d wheelsJacobian_;
+  Eigen::Vector3d mobileBaseSpeedCommand_;
+  Eigen::Vector3d wheelsSpeedCommand_;
 
   /* Bumper names */
-  std::vector<std::string> bumpers;
+  std::vector<std::string> bumpers_;
 
   /* Enable or disable custom safety reflex */
-  bool wheelsOffOnBumperPressed = true;
-  bool wheelsOffOnBumperPressedState = false;
+  bool wheelsOffOnBumperPressed_ = true;
+  bool wheelsOffOnBumperPressedState_ = false;
 
   /* Name of the speakers device in mc_rtc RobotModule */
-  std::string speakerDeviceName = "Speakers";
+  std::string speakerDeviceName_ = "Speakers";
 
   /* Name of the visual display device in mc_rtc RobotModule */
-  std::string displayDeviceName = "Tablet";
-  bool enableVisualDisplay = true;
+  std::string displayDeviceName_ = "Tablet";
+  bool enableVisualDisplay_ = true;
 
   /* ROS topic monitoring thread */
-  bool useROS = false;
-  std::thread spin_th;
+  bool useROS_ = false;
+  std::thread spinThread_;
   void monitorROSTopic();
 
   /* T265 tracking camera */
   void updateBodySensor(const nav_msgs::Odometry::ConstPtr& msg);
-  Eigen::Vector3d t265_position;
-  Eigen::Quaterniond t265_orientation;
-  Eigen::Vector3d t265_linvel;
-  Eigen::Vector3d t265_angvel;
-  Eigen::Vector3d init_t265_pos_from_kin;
-  Eigen::Quaterniond init_t265_rot_from_kin;
+  Eigen::Vector3d t265Pos_;
+  Eigen::Quaterniond t265Ori_;
+  Eigen::Vector3d t265Linvel_;
+  Eigen::Vector3d t265Angvel_;
+  Eigen::Vector3d initT265Pos_;
+  Eigen::Quaterniond initT265Ori_;
 
 };
 
