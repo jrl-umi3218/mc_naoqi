@@ -12,8 +12,8 @@
 Instead of using NAOqi SDK, the communication with naoqi OS is based on [naoqi_libqi](http://wiki.ros.org/naoqi_libqi) and [naoqi_libqicore](http://wiki.ros.org/naoqi_libqicore) ros packages:
 
 ```sh
-sudo apt-get install ros-kinetic-naoqi-libqi
-sudo apt-get install ros-kinetic-naoqi-libqicore
+sudo apt-get install ros-melodic-naoqi-libqi
+sudo apt-get install ros-melodic-naoqi-libqicore
 ```
 
 Then compile `mc_naoqi`.
