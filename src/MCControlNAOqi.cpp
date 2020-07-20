@@ -93,12 +93,12 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
                                             globalController_.robot().name(), host_, port_);
     std::stringstream strstr;
     try{
+      mc_rtc::log::info("Connecting to {}:{}", host_, port_);
       strstr << "tcp://" << host_ << ":" << port_;
-      std::cout << "Connecting to " << host_ << ":" << port_ << std::endl;
       ALBroker_->connect(strstr.str()).wait();
     }
     catch (const std::exception& e){
-      std::cout << "Cannot connect to session: " << e.what() << std::endl;
+      mc_rtc::log::error_and_throw<std::runtime_error>("Cannot connect to session: {}", e.what());
       ALBroker_->close();
     }
     mc_rtc::log::success("Connected to {}", host_);
@@ -109,7 +109,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     /* Check that controller main robot and real robot are of the same type */
     std::string realRobotName = MCNAOqiDCM_.call<std::string>("getRobotName");
     if(realRobotName != globalController_.robot().name()){
-      mc_rtc::log::error_and_throw<std::runtime_error>("Controller main robot {} and the real robot {} are not of the same type",
+      mc_rtc::log::error_and_throw<std::runtime_error>("Controller main robot '{}' and the real robot '{}' are not of the same type",
                                                         globalController_.robot().name(), realRobotName);
     }
     ALlauncher_ = ALBroker_->service("ALLauncher");
