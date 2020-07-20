@@ -31,12 +31,12 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
 
 
   if(!globalController_.configuration().config.has("UseRobotIMU")){
-    mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU_); 
+    mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU_);
   }
   globalController_.configuration().config("UseRobotIMU", useRobotIMU_);
 
   if(!globalController_.configuration().config.has("Blinking")){
-    mc_rtc::log::warning("'Blinking' config entry missing. Using default value: {}", blinking_); 
+    mc_rtc::log::warning("'Blinking' config entry missing. Using default value: {}", blinking_);
   }
   globalController_.configuration().config("Blinking", blinking_);
 
@@ -89,7 +89,7 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     /* Create Naoqi session */
     ALBroker_ = qi::makeSession();
     /* Try to connect via TCP to the robot */
-    mc_rtc::log::info("MCControlNAOqi: Connecting to {} robot on address {}:{}", 
+    mc_rtc::log::info("MCControlNAOqi: Connecting to {} robot on address {}:{}",
                                             globalController_.robot().name(), host_, port_);
     std::stringstream strstr;
     try{
@@ -106,6 +106,12 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
 
     /* Connect to local robot modules */
     MCNAOqiDCM_ = ALBroker_->service("MCNAOqiDCM");
+    /* Check that controller main robot and real robot are of the same type */
+    std::string realRobotName = MCNAOqiDCM_.call<std::string>("getRobotName");
+    if(realRobotName != globalController_.robot().name()){
+      mc_rtc::log::error_and_throw<std::runtime_error>("Controller main robot {} and the real robot {} are not of the same type",
+                                                        globalController_.robot().name(), realRobotName);
+    }
     ALlauncher_ = ALBroker_->service("ALLauncher");
     if (globalController_.robot().name() == "pepper"){
 
