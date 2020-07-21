@@ -573,7 +573,7 @@ void MCControlNAOqi::servo(const bool state)
       }
 
       /* Re-activate safety reflexes */
-      if(ALTabletservice_.call<bool>("isModulePresent", "ALMotion")){
+      if(ALlauncher_.call<bool>("isModulePresent", "ALMotion")){
         mc_rtc::log::info("ALMotion module is active on the robot. Re-activating safety reflexes...");
         qi::AnyObject al_motion = ALBroker_->service("ALMotion");
         al_motion.call<bool>("setCollisionProtectionEnabled", "Arms", true);
