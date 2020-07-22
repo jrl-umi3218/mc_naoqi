@@ -371,6 +371,7 @@ void MCControlNAOqi::sensor_thread()
       if(bumper.touch() && wheelsOffOnBumperPressed_){
         wheelsServoState_ = false;
         wheelsServoButtonText_ = "Wheels ON";
+        mc_rtc::log::warning("[Sensors] Mobile base bumper touched. Wheels will go OFF");
       }
     }
 
@@ -382,7 +383,7 @@ void MCControlNAOqi::sensor_thread()
       {
        // Non-blocking call to ALTextToSpeech
        MCNAOqiDCM_.post("sayText", speaker.say());
-       mc_rtc::log::info("Saying sentence in this loop");
+       mc_rtc::log::info("[Sensors] Saying sentence in this loop");
       }
     }
 
@@ -409,7 +410,7 @@ void MCControlNAOqi::sensor_thread()
         {
           // Non-blocking call to ALTabletService
           ALTabletservice_.post("showImage", tablet.display());
-          mc_rtc::log::info("Showing image in this loop");
+          mc_rtc::log::info("[Sensors] Showing image in this loop");
         }
         if(tablet.reset()){
           ALTabletservice_.post("hideImage");
