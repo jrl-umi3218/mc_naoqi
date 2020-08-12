@@ -1,10 +1,8 @@
 #pragma once
 
 #include <mc_control/mc_global_controller.h>
-#include "nav_msgs/Odometry.h"
 #include <condition_variable>
 #include <qi/session.hpp>
-#include <mc_rtc/ros.h>
 #include <thread>
 
 

@@ -381,7 +381,6 @@ void MCControlNAOqi::sensor_thread()
       globalController_.setSensorOrientation(Eigen::Quaterniond(mc_rbdyn::rpyToMat(rpyIn_)));
       globalController_.setSensorAngularVelocity(rateIn_);
     }
-    //globalController_.controller().realRobot().jointTorques(tauIn_);
     globalController_.setJointTorques(tauIn_);
 
     /* Start control only once the robot state has been read at least once */
