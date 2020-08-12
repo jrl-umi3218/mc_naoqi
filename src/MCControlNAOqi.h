@@ -1,10 +1,11 @@
 #pragma once
 
-#include "ContactForcePublisher.h"
+#include <mc_control/mc_global_controller.h>
 #include "nav_msgs/Odometry.h"
 #include <condition_variable>
 #include <qi/session.hpp>
 #include <mc_rtc/ros.h>
+#include <thread>
 
 
 namespace mc_naoqi
@@ -17,12 +18,9 @@ struct MCControlNAOqi
   /**
   * @brief Interface constructor and destructor
   */
-  MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
-                  const std::string& host, const unsigned int port);
+  MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port);
 
   virtual ~MCControlNAOqi();
-
-  bool publishContactForces() { return publishContactForces_; };
 
   /**
    * @brief Is the interface running
@@ -70,8 +68,6 @@ struct MCControlNAOqi
   mc_control::MCGlobalController& controller() { return globalController_; }
 
  private:
-  /*! Publish contact forces from mc_rtc to ROS */
-  bool publishContactForces_ = true;
 
   /*! Controller state (started or stopped) */
   bool controllerStartedState_ = false;
@@ -116,9 +112,6 @@ struct MCControlNAOqi
   Eigen::Vector3d accIn_;
   /*! Angular velocity */
   Eigen::Vector3d rateIn_;
-
-  /*! Contact force publisher */
-  std::unique_ptr<ContactForcePublisher> &cfp_ptr;
 
   /* Connection information */
   /*! Connection host */

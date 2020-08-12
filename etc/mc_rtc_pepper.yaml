@@ -85,7 +85,6 @@ GUIServer:
 VerboseLoader: false
 
 # Interface specific parameters
-PublishContactForces: true
 UseRobotIMU: false
 Blinking: true
 Talking: true

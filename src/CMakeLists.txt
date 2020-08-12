@@ -1,12 +1,10 @@
 set ( SOURCES
  main.cpp
  MCControlNAOqi.cpp
- ContactForcePublisher.cpp
 )
 
 set ( HEADERS
  MCControlNAOqi.h
- ContactForcePublisher.h
 )
 
 add_executable( mc_naoqi ${SOURCES} ${HEADERS})

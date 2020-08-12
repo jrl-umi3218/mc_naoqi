@@ -1,6 +1,5 @@
 // mc_naoqi
 #include "MCControlNAOqi.h"
-#include "ContactForcePublisher.h"
 
 // SpaceVecAlg
 #include <SpaceVecAlg/Conversions.h>
@@ -14,21 +13,13 @@
 
 namespace mc_naoqi
 {
-MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::unique_ptr<ContactForcePublisher> &cfp_ptr,
-                                const std::string& host, const unsigned int port = 9559)
+MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port = 9559)
     : globalController_(controller),
       timestep_(static_cast<unsigned int>(1000 * controller.timestep())),
       interfaceRunning_(true),
-      cfp_ptr(cfp_ptr),
       host_(host),
       port_(port)
 {
-  /* Configure interface */
-  if(!globalController_.configuration().config.has("PublishContactForces")){
-    mc_rtc::log::warning("'PublishContactForces' config entry missing. Using default value: {}", publishContactForces_);
-  }
-  globalController_.configuration().config("PublishContactForces", publishContactForces_);
-
   if(!globalController_.configuration().config.has("UseRobotIMU")){
     mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU_);
   }
@@ -222,9 +213,6 @@ MCControlNAOqi::~MCControlNAOqi() {
   if(host_ != "simulation"){
     MCNAOqiDCM_.call<void>("stopLoop");
   }
-  if(cfp_ptr){
-    cfp_ptr->stop();
-  }
   /* Wait for control thread to finish */
   controlThread_.join();
 }
@@ -273,11 +261,6 @@ void MCControlNAOqi::control_thread()
             /* Send wheel speed commands */
             MCNAOqiDCM_.call<void>("setWheelSpeed", wheelsSpeedCommand_(0), wheelsSpeedCommand_(1), wheelsSpeedCommand_(2));
           }
-        }
-
-        /* Publish contact forces computed by mc_rtc to ROS */
-        if(cfp_ptr){
-          cfp_ptr->update();
         }
       }
     }else{
@@ -629,11 +612,6 @@ void MCControlNAOqi::startOrStop(const bool state)
       MCNAOqiDCM_.call<void>("setLeds", "eyesPeripheral", 1.0f, 1.0f, 1.0f);
       MCNAOqiDCM_.call<void>("setLeds", "shoulderLeds", 0.5f, 0.5f, 0.5f);
       MCNAOqiDCM_.call<void>("isetLeds", "earsLeds", 0.0);
-    }
-
-    /* Stop contact force publishing */
-    if(cfp_ptr){
-      cfp_ptr->stop();
     }
     controllerStartedState_ = false;
     controllerButtonText_ = "Start";

@@ -138,11 +138,6 @@ void input_thread(MCControlNAOqi & controlNAOqi)
 /* Main function of the interface */
 int main(int argc, char **argv)
 {
-  /* Prepare to publish desired contact forces to ROS if reqested */
-  std::shared_ptr<ros::NodeHandle> nh = mc_rtc::ROSBridge::get_node_handle();
-  auto nh_p = *nh;
-  std::unique_ptr<ContactForcePublisher> cfp_ptr = nullptr;
-
   /* Set command line arguments options */
   /* Usage example: ./src/mc_naoqi -h simulation -f ../etc/mc_rtc_pepper.yaml*/
   std::string conf_file = mc_rtc::CONF_PATH;
@@ -173,12 +168,7 @@ int main(int argc, char **argv)
     return 1;
   }
   /* Create MCControlNAOqi interface */
-  MCControlNAOqi mc_control_naoqi(controller, cfp_ptr, host, port);
-
-  /* Create contact force publisher */
-  if(mc_control_naoqi.publishContactForces()){
-    cfp_ptr.reset(new ContactForcePublisher(nh_p, controller));
-  }
+  MCControlNAOqi mc_control_naoqi(controller, host, port);
 
   // Set radom seed for eye blinking
   srand (uint(time(NULL)));
