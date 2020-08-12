@@ -568,12 +568,12 @@ void MCControlNAOqi::wheelsServo(bool state){
 void MCControlNAOqi::startOrStop(const bool state)
 {
 
-  if(state){ // don't start if already started
+  if(state){
     mc_rtc::log::info("Starting experiment");
     /* Initialize controller with values from the encoders */
-    mc_rtc::log::info("[Control] Initializing controller");
+    mc_rtc::log::info("Initializing controller");
     globalController_.init(qIn_);
-    mc_rtc::log::info("[Control] Controller initialized with sensor data from encoders");
+    mc_rtc::log::info("Controller initialized with sensor data from encoders");
 
     /* Start running controller */
     globalController_.running = true;
