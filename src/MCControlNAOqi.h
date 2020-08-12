@@ -154,7 +154,6 @@ struct MCControlNAOqi
   /*! Mobile base control (Pepper only) */
   bool moveMobileBase_ = false;
   double wheelRadius_ = 0.07; // m
-  std::vector<std::string> wheelNames_ = {"WheelFL_link", "WheelFR_link", "WheelB_link"};
   Eigen::Matrix3d wheelsJacobian_;
   Eigen::Vector3d mobileBaseSpeedCommand_;
   Eigen::Vector3d wheelsSpeedCommand_;

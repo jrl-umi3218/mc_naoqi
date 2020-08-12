@@ -105,9 +105,9 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
 
       /* Compute wheels jacobian for Pepper mobile base control */
       if(moveMobileBase_){
-        for(unsigned int i = 0; i < wheelNames_.size(); i++){
-          // TODO asses that the order of wheels is the same in MCNAOqiDCM_ and in wheelNames
-          sva::PTransformd base_X_wheel = globalController_.robot().X_b1_b2("base_link", wheelNames_[i]);
+        std::vector<std::string> wheelNames = MCNAOqiDCM_.call<std::vector<std::string>>("wheelNames");
+        for(unsigned int i = 0; i < wheelNames.size(); i++){
+          sva::PTransformd base_X_wheel = globalController_.robot().X_b1_b2("base_link", wheelNames[i]+"_link");
           Eigen::Matrix4d hom_base_X_wheel = sva::conversions::toHomogeneous(base_X_wheel, sva::conversions::RightHanded);
           wheelsJacobian_(i,0) = hom_base_X_wheel(0,1);
           wheelsJacobian_(i,1) = hom_base_X_wheel(1,1);
