@@ -329,11 +329,21 @@ void MCControlNAOqi::sensor_thread()
     if(talking_)
     {
       auto & speaker = globalController_.robot().device<mc_pepper::Speaker>(speakerDeviceName_);
-      if(speaker.hasSomethingToSay())
+      if(speaker.hasSomethingToSay() && !speakerBlockTimerActive_)
       {
        // Non-blocking call to ALTextToSpeech
        MCNAOqiDCM_.post("sayText", speaker.say());
        mc_rtc::log::info("[Sensors] Saying sentence in this loop");
+       // Activate new command blocking timer
+       speakerBlockTimerActive_ = true;
+      }
+      // Block sending new command to speakers for speakerBlockTimer_ seconds
+      if(speakerBlockTimerActive_){
+        speakerBlockTimer_ -= globalController_.timestep();
+      }
+      if(speakerBlockTimer_ <= 0.0){
+        speakerBlockTimerActive_ = false;
+        speakerBlockTimer_ = 3.0;
       }
     }
 
@@ -356,15 +366,27 @@ void MCControlNAOqi::sensor_thread()
       if(enableVisualDisplay_)
       {
         auto & tablet = globalController_.robot().device<mc_pepper::VisualDisplay>(displayDeviceName_);
-        if(tablet.newURL())
+        if(tablet.newURL() && !displayBlockTimerActive_)
         {
           // Non-blocking call to ALTabletService
           ALTabletservice_.post("showImage", tablet.display());
           mc_rtc::log::info("[Sensors] Showing image in this loop");
+          // Activate new command blocking timer
+          displayBlockTimerActive_ = true;
         }
-        if(tablet.reset()){
+        if(tablet.reset() && !displayBlockTimerActive_){
           ALTabletservice_.post("hideImage");
           tablet.reset(false);
+          // Activate new command blocking timer
+          displayBlockTimerActive_ = true;
+        }
+        // Block sending new command to tablet for displayBlockTimer_ seconds
+        if(displayBlockTimerActive_){
+          displayBlockTimer_ -= globalController_.timestep();
+        }
+        if(displayBlockTimer_ <= 0.0){
+          displayBlockTimerActive_ = false;
+          displayBlockTimer_ = 3.0;
         }
       }
     }

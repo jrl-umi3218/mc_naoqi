@@ -153,7 +153,7 @@ struct MCControlNAOqi
 
   /*! Mobile base control (Pepper only) */
   bool moveMobileBase_ = false;
-  double wheelRadius_ = 0.07; // meters
+  double wheelRadius_ = 0.07; // m
   std::vector<std::string> wheelNames_ = {"WheelFL_link", "WheelFR_link", "WheelB_link"};
   Eigen::Matrix3d wheelsJacobian_;
   Eigen::Vector3d mobileBaseSpeedCommand_;
@@ -168,10 +168,16 @@ struct MCControlNAOqi
 
   /* Name of the speakers device in mc_rtc RobotModule */
   std::string speakerDeviceName_ = "Speakers";
+  /* Prevent sending commands to speakers in every iteration */
+  double speakerBlockTimer_ = 3.0; // s
+  bool speakerBlockTimerActive_ = false;
 
   /* Name of the visual display device in mc_rtc RobotModule */
   std::string displayDeviceName_ = "Tablet";
   bool enableVisualDisplay_ = true;
+  /* Prevent sending commands to tablet in every iteration */
+  double displayBlockTimer_ = 3.0; // s
+  bool displayBlockTimerActive_ = false;
 };
 
 } /* mc_naoqi */
