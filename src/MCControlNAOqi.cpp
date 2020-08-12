@@ -29,7 +29,6 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
   }
   globalController_.configuration().config("PublishContactForces", publishContactForces_);
 
-
   if(!globalController_.configuration().config.has("UseRobotIMU")){
     mc_rtc::log::warning("'UseRobotIMU' config entry missing. Using default value: {}", useRobotIMU_);
   }
@@ -72,12 +71,6 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
 
   /* Don't start running controller before commanded `start` */
   globalController_.running = false;
-
-  /* Start a thread to monitor ROS topics if required */
-  if(useROS_){
-    spinThread_ = std::thread(std::bind(&MCControlNAOqi::monitorROSTopic, this));
-    mc_rtc::log::info("ROS thread started");
-  }
 
   /* Eye led anomation option */
   if(blinking_){
@@ -218,18 +211,6 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, std::
     }
     globalController_.setEncoderValues(qIn_);
     globalController_.realRobot().posW(globalController_.robot().posW());
-    //globalController_.setSensorPosition(globalController_.realRobot().bodyPosW("t265_pose").translation());
-    //globalController_.setSensorOrientation(Eigen::Quaterniond(globalController_.realRobot().bodyPosW("t265_pose").rotation()));
-  }
-
-  /* First update of FB from controller */
-  if(useROS_){
-    globalController_.realRobot().posW(globalController_.robot().posW());
-    globalController_.setSensorPosition(globalController_.realRobot().bodyPosW("t265_pose").translation());
-    globalController_.setSensorOrientation(Eigen::Quaterniond(globalController_.realRobot().bodyPosW("t265_pose").rotation()));
-    /* Initialize t265 position from robot kinematics */
-    initT265Pos_ = globalController_.realRobot().bodyPosW("t265_pose").translation();
-    initT265Ori_ = Eigen::Quaterniond(globalController_.realRobot().bodyPosW("t265_pose").rotation());
   }
 
   mc_rtc::log::info("MCControlNAOqi interface initialized");
@@ -292,15 +273,6 @@ void MCControlNAOqi::control_thread()
             /* Send wheel speed commands */
             MCNAOqiDCM_.call<void>("setWheelSpeed", wheelsSpeedCommand_(0), wheelsSpeedCommand_(1), wheelsSpeedCommand_(2));
           }
-        }
-
-        /* Update bodySensor in control thread if working in simulation mode */
-        // TODO update in sensor_thread otherwise
-        if(host_ == "simulation" && useROS_){
-          globalController_.setSensorPosition(t265Pos_);
-          globalController_.setSensorOrientation(t265Ori_);
-          globalController_.setSensorLinearVelocity(t265Linvel_);
-          globalController_.setSensorAngularVelocity(t265Angvel_);
         }
 
         /* Publish contact forces computed by mc_rtc to ROS */
@@ -428,14 +400,6 @@ void MCControlNAOqi::sensor_thread()
     }
     //globalController_.controller().realRobot().jointTorques(tauIn_);
     globalController_.setJointTorques(tauIn_);
-
-    /* Update bodySensor from tracking camera */
-    if(useROS_ && !useRobotIMU_){
-      globalController_.setSensorPosition(t265Pos_);
-      globalController_.setSensorOrientation(t265Ori_);
-      globalController_.setSensorLinearVelocity(t265Linvel_);
-      globalController_.setSensorAngularVelocity(t265Angvel_);
-    }
 
     /* Start control only once the robot state has been read at least once */
     controlCV_.notify_one();
@@ -676,42 +640,6 @@ void MCControlNAOqi::startOrStop(const bool state)
     mc_rtc::log::info("Controller Stopped");
     mc_rtc::log::info("Experiment stopped");
   }
-}
-
-void MCControlNAOqi::monitorROSTopic(){
-  // Subscribe to ROS topic
-  std::shared_ptr<ros::NodeHandle> nh = mc_rtc::ROSBridge::get_node_handle();
-  ros::Subscriber sub = nh->subscribe("/camera_fisheye/odom/sample", 500, &MCControlNAOqi::updateBodySensor, this);
-  // Monitor messages
-  ros::Rate r(200);
-  while(ros::ok()){
-    ros::spinOnce();
-    r.sleep();
-  }
-}
-
-void MCControlNAOqi::updateBodySensor(const nav_msgs::Odometry::ConstPtr& msg)
-{
-  /* Update position */
-  t265Pos_[0] = initT265Pos_[0] + msg->pose.pose.position.x;
-  t265Pos_[1] = initT265Pos_[1] + msg->pose.pose.position.y;
-  t265Pos_[2] = initT265Pos_[2];
-
-  /* Update orientation */
-  t265Ori_ = Eigen::Quaterniond(msg->pose.pose.orientation.w,
-                                        msg->pose.pose.orientation.x,
-                                        msg->pose.pose.orientation.y,
-                                        msg->pose.pose.orientation.z).inverse();
-
-  /* Update linear velocity */
-  t265Linvel_[0] = msg->twist.twist.linear.x;
-  t265Linvel_[1] = msg->twist.twist.linear.y;
-  t265Linvel_[2] = msg->twist.twist.linear.z;
-
-  /* Update angular velocity */
-  t265Angvel_[0] = msg->twist.twist.angular.x;
-  t265Angvel_[1] = msg->twist.twist.angular.y;
-  t265Angvel_[2] = msg->twist.twist.angular.z;
 }
 
 } /* mc_naoqi */

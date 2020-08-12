@@ -112,16 +112,6 @@ void input_thread(MCControlNAOqi & controlNAOqi)
       controlNAOqi.controller().running = false;
       controlNAOqi.controller().EnableController(controller_name);
     }
-    /* (Re)start slam */
-    else if(token == "ss")
-    {
-      mc_rtc::log::info("Initializing V-SLAM");
-      // TODO set realRobot().posW() to Identity (back to world origin)
-      // ... Assuming realRobot is not moving
-      // ... Get realRobot joints state, compute t265_pose in world frame
-      // ... Use t265_pose to set initial position of T265 sensor in world frame
-      // ... restart T265 V-SLAM
-    }
     /* Run one of the common functions (cli_fn) */
     else if(cli_fn.count(token))
     {

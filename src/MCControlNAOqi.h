@@ -22,7 +22,7 @@ struct MCControlNAOqi
 
   virtual ~MCControlNAOqi();
 
-  bool publishContactForces() { return publishContactForces_; };  
+  bool publishContactForces() { return publishContactForces_; };
 
   /**
    * @brief Is the interface running
@@ -182,21 +182,6 @@ struct MCControlNAOqi
   /* Name of the visual display device in mc_rtc RobotModule */
   std::string displayDeviceName_ = "Tablet";
   bool enableVisualDisplay_ = true;
-
-  /* ROS topic monitoring thread */
-  bool useROS_ = false;
-  std::thread spinThread_;
-  void monitorROSTopic();
-
-  /* T265 tracking camera */
-  void updateBodySensor(const nav_msgs::Odometry::ConstPtr& msg);
-  Eigen::Vector3d t265Pos_;
-  Eigen::Quaterniond t265Ori_;
-  Eigen::Vector3d t265Linvel_;
-  Eigen::Vector3d t265Angvel_;
-  Eigen::Vector3d initT265Pos_;
-  Eigen::Quaterniond initT265Ori_;
-
 };
 
 } /* mc_naoqi */
