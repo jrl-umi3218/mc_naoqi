@@ -83,7 +83,6 @@ struct MCControlNAOqi
 
   /*! Global mc_rtc controller */
   mc_control::MCGlobalController& globalController_;
-  std::string controllerToRun_;
 
   /*! Controller timestep expressed in ms */
   unsigned int timestep_;

@@ -41,16 +41,11 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
   globalController_.configuration().config("MoveMobileBase", moveMobileBase_);
 
   /* Set up interface GUI tab */
-  controllerToRun_ = globalController_.current_controller();
-  globalController_.controller().gui()->addElement({"NAOqi"}, // TODO make this element first tab in the gui panel if possible
-    mc_rtc::gui::StringInput("Host", [this]() { return this->host_; }, [this](const std::string & in){ this->host_ = in; }),
-    mc_rtc::gui::NumberInput("Port", [this]() { return this->port_; }, [this](unsigned int in){ this->port_ = in; }),
-    mc_rtc::gui::Button("Connect", [this]() { return; }), // TODO implement connect/disconnect
+  globalController_.controller().gui()->addElement({"NAOqi"},
+    mc_rtc::gui::Label("Host", [this]() { return this->host_; }),
+    mc_rtc::gui::Label("Port", [this]() { return this->port_; }),
     mc_rtc::gui::Label("Connection status", [this]() { return this->connectionState_; }),
-    mc_rtc::gui::StringInput("Controller", [this]()
-                  { return this->controllerToRun_; },
-                  [this](const std::string & in){ this->controllerToRun_ = in; }), // controller to start (e.g. Posture, FSM,...)
-    mc_rtc::gui::Button(controllerButtonText_, [this]() { startOrStop(!controllerStartedState_); }), // TODO sart/stop the controllerToRun_
+    mc_rtc::gui::Button(controllerButtonText_, [this]() { startOrStop(!controllerStartedState_); }),
     mc_rtc::gui::Button(servoButtonText_, [this]() { servo(!servoState_); })
   );
 
