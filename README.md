@@ -1,6 +1,6 @@
-# mc_naoqi
+# **mc_naoqi**
 
-### Interface to handle communication between `mc_rtc` and NAO/Pepper robots
+### Interface to handle communication between [`mc_rtc`](https://jrl-umi3218.github.io/mc_rtc/) and SoftBank humanoid robots running NAOqi OS
 
 ![mc_naoqi](doc/mc_naoqi.png "mc_naoqi interface")
 
@@ -64,3 +64,55 @@ If `mc_rtc` was compiled with ROS support, then services will be available to in
 ```sh
 rosservice list /mc_rtc
 ```
+
+# Supported robots
+
+* **Pepper** (fully supported and tested)
+* **NAO** (initial functionality implemented, to be tested)
+* Romeo (not supported)
+
+# Research works that used this interface
+
+<details>
+<summary>2020:
+<a href="https://www.youtube.com/watch?v=vDmEc1aBODA">Human-robot interaction</a></summary>
+<br>
+@inproceedings{bolotnikova2020roman,
+<br> &emsp;title = {Autonomous Initiation of Human Physical Assistance by a Humanoid},
+<br> &emsp;author = {Anastasia Bolotnikova and S{\'e}bastien Courtois and Abderrahmane Kheddar},
+<br> &emsp;booktitle = {IEEE International Conference on Robot and Human Interactive Communication},
+<br> &emsp;address = {Naples, Italy},
+<br> &emsp;month = {31 August--4 September},
+<br> &emsp;year = {2020} <br>
+}
+</details>
+<details>
+<summary>2018: <a href="https://www.youtube.com/watch?v=NnVgbZqZebU">Compliant robot motion</a></summary>
+<br>
+@inproceedings{bolotnikova2018roman,
+<br> &emsp;title = {Contact observer for humanoid robot Pepper based on tracking joint position discrepancies},
+<br> &emsp;author = {Anastasia Bolotnikova and S{\'e}bastien Courtois and Abderrahmane Kheddar},
+<br> &emsp;booktitle = {IEEE International Conference on Robot and Human Interactive Communication},
+<br> &emsp;pages = {29--34},
+<br> &emsp;address = {Nanjing, China},
+<br> &emsp;month = {27--31 August},
+<br> &emsp;year = {2018} <br>
+}
+</details>
+<details>
+<summary>2018: <a href="https://www.youtube.com/watch?v=nY9zMG0EsnM">Contact detection</a></summary>
+<br>
+@inproceedings{bolotnikova2018humanoids,
+<br> &emsp;title={Compliant Robot Motion Regulated via Proprioceptive Sensor Based Contact Observer},
+<br> &emsp;author={Anastasia Bolotnikova and S{\'e}bastien Courtois and Abderrahmane Kheddar},
+<br> &emsp;booktitle={IEEE-RAS International Conference on Humanoid Robots},
+<br> &emsp;pages={854--859},
+<br> &emsp;address = {Beijing, China},
+<br> &emsp;month = {6--9 November},
+<br> &emsp;year={2018} <br>
+}
+</details>
+
+# Acknowledgment
+
+Thanks to @gergondet and @atanguy for developing and helping with this interface and the [`mc_rtc`](https://jrl-umi3218.github.io/mc_rtc/) framework
