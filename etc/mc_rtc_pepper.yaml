@@ -27,8 +27,8 @@ UpdateObservers: [Encoder]
 Observers:
   Encoder:
     # Valid values are [estimator, control, none]
-    UpdatePosition: control
-    UpdateVelocity: control
+    UpdatePosition: estimator
+    UpdateVelocity: estimator
     Log: true
 
 # Controller timestep (s)
