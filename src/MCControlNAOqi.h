@@ -161,6 +161,9 @@ struct MCControlNAOqi
   /* Bumper names */
   std::vector<std::string> bumpers_;
 
+  /* Tactile sensor names */
+  std::vector<std::string> tactiles_;
+
   /* Enable or disable custom safety reflex */
   bool wheelsOffOnBumperPressed_ = true;
   bool wheelsOffOnBumperPressedState_ = false;

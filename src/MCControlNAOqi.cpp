@@ -151,6 +151,20 @@ MCControlNAOqi::MCControlNAOqi(mc_control::MCGlobalController& controller, const
       }
     }
 
+    /* Check that mc_rtc Robot object has tactile */
+    std::vector<std::string> tactileSensors = MCNAOqiDCM_.call<std::vector<std::string>>("tactileSensorNames");
+    for (auto tn : tactileSensors) {
+      if(!globalController_.robot().hasDevice<mc_pepper::TouchSensor>(tn)){
+        mc_rtc::log::warning("Robot object does not have a TouchSensor named {}", tn);
+        mc_rtc::log::warning("Tactile functionality will not be available for {}", tn);
+      }else if(sensorOrderMap_.find(tn) == sensorOrderMap_.end()){
+        mc_rtc::log::warning("Robot local DCM module does not have sensor entry for {}", tn);
+        mc_rtc::log::warning("Tactile functionality will not be available for {}", tn);
+      }else{
+        tactiles_.push_back(tn);
+      }
+    }
+
     /* Check that mc_rtc Robot object has speakers */
     if(!globalController_.robot().hasDevice<mc_pepper::Speaker>(speakerDeviceName_)){
       mc_rtc::log::warning("Robot object does not have a Speaker named {}", speakerDeviceName_);
@@ -325,6 +339,13 @@ void MCControlNAOqi::sensor_thread()
       }
     }
 
+    /* Tactile sensors */
+    for(auto& t : tactiles_)
+    {
+      auto & tactile = globalController_.robot().device<mc_pepper::TouchSensor>(t);
+      tactile.touch(sensors_[sensorOrderMap_[t]]);
+    }
+
     /* Speakers */
     if(talking_)
     {
@@ -456,15 +477,6 @@ void MCControlNAOqi::servo(const bool state)
         mc_rtc::log::info("Connected to DCM loop");
       }
 
-      if(globalController_.robot().name() == "pepper"){
-        /* Set tablet image */
-        ALTabletservice_.call<bool>("setBrightness", 1.0);
-        /* Display a local image located in /opt/aldebaran/www/apps/media/html/
-           Custom image needs to be loaded to the robot first
-           The ip of the robot from the tablet is 198.18.0.1 */
-        ALTabletservice_.post("showImage", "http://198.18.0.1/apps/media/tablet_screen.png");
-      }
-
       /* If controller is not running, set joint angle commands to current joint state from encoders */
       if (!globalController_.running)
       {
@@ -525,9 +537,6 @@ void MCControlNAOqi::servo(const bool state)
           MCNAOqiDCM_.call<void>("bumperSafetyReflex", !wheelsOffOnBumperPressedState_);
           wheelsOffOnBumperPressedState_ = !wheelsOffOnBumperPressedState_;
         }
-
-        /* Hide tablet image */
-        ALTabletservice_.post("hideImage");
       }
 
       /* Disconnect the mc_rtc joint update callback from robot's DCM loop */
@@ -600,6 +609,15 @@ void MCControlNAOqi::startOrStop(const bool state)
     /* Start running controller */
     globalController_.running = true;
 
+    if(host_ != "simulation" && globalController_.robot().name() == "pepper"){
+      /* Set tablet image */
+      ALTabletservice_.call<bool>("setBrightness", 1.0);
+      /* Display a local image located in /opt/aldebaran/www/apps/media/html/
+         Custom image needs to be loaded to the robot first
+         The ip of the robot from the tablet is 198.18.0.1 */
+      ALTabletservice_.post("showImage", "http://198.18.0.1/apps/media/mc_naoqi.png");
+    }
+
     /* Change led colors */
     if (globalController_.robot().name() == "pepper" && host_ != "simulation")
     {
@@ -618,6 +636,11 @@ void MCControlNAOqi::startOrStop(const bool state)
     mc_rtc::log::info("Stopping experiment");
     /* Stop running controller */
     globalController_.running = false;
+
+    /* Hide tablet image */
+    if(host_ != "simulation" && globalController_.robot().name() == "pepper"){
+      ALTabletservice_.post("hideImage");
+    }
 
     /* Change led colors */
     if (globalController_.robot().name() == "pepper" && host_ != "simulation")
