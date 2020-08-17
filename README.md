@@ -115,4 +115,4 @@ rosservice list /mc_rtc
 
 # Acknowledgment
 
-Thanks to @gergondet and @atanguy for developing and helping with this interface and the [`mc_rtc`](https://jrl-umi3218.github.io/mc_rtc/) framework
+Thanks to [@gergondet](https://github.com/gergondet) and [@arntanguy](https://github.com/arntanguy) for developing and helping with this interface and the [`mc_rtc`](https://jrl-umi3218.github.io/mc_rtc/) framework
