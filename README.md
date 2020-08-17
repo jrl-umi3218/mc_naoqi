@@ -89,19 +89,6 @@ rosservice list /mc_rtc
 <details>
 <summary>2018: <a href="https://www.youtube.com/watch?v=NnVgbZqZebU">Compliant robot motion</a></summary>
 <br>
-@inproceedings{bolotnikova2018roman,
-<br> &emsp;title = {Contact observer for humanoid robot Pepper based on tracking joint position discrepancies},
-<br> &emsp;author = {Anastasia Bolotnikova and S{\'e}bastien Courtois and Abderrahmane Kheddar},
-<br> &emsp;booktitle = {IEEE International Conference on Robot and Human Interactive Communication},
-<br> &emsp;pages = {29--34},
-<br> &emsp;address = {Nanjing, China},
-<br> &emsp;month = {27--31 August},
-<br> &emsp;year = {2018} <br>
-}
-</details>
-<details>
-<summary>2018: <a href="https://www.youtube.com/watch?v=nY9zMG0EsnM">Contact detection</a></summary>
-<br>
 @inproceedings{bolotnikova2018humanoids,
 <br> &emsp;title={Compliant Robot Motion Regulated via Proprioceptive Sensor Based Contact Observer},
 <br> &emsp;author={Anastasia Bolotnikova and S{\'e}bastien Courtois and Abderrahmane Kheddar},
@@ -110,6 +97,19 @@ rosservice list /mc_rtc
 <br> &emsp;address = {Beijing, China},
 <br> &emsp;month = {6--9 November},
 <br> &emsp;year={2018} <br>
+}
+</details>
+<details>
+<summary>2018: <a href="https://www.youtube.com/watch?v=nY9zMG0EsnM">Contact detection</a></summary>
+<br>
+@inproceedings{bolotnikova2018roman,
+<br> &emsp;title = {Contact observer for humanoid robot Pepper based on tracking joint position discrepancies},
+<br> &emsp;author = {Anastasia Bolotnikova and S{\'e}bastien Courtois and Abderrahmane Kheddar},
+<br> &emsp;booktitle = {IEEE International Conference on Robot and Human Interactive Communication},
+<br> &emsp;pages = {29--34},
+<br> &emsp;address = {Nanjing, China},
+<br> &emsp;month = {27--31 August},
+<br> &emsp;year = {2018} <br>
 }
 </details>
 
