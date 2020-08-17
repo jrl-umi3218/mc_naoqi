@@ -19,7 +19,7 @@ sudo apt-get install ros-melodic-naoqi-libqicore
 Then compile `mc_naoqi`.
 
 ``` bash
-git clone git@gite.lirmm.fr:multi-contact/mc_naoqi.git
+git clone https://github.com/jrl-umi3218/mc_naoqi.git
 cd mc_naoqi
 git submodule update --init
 mkdir build
@@ -31,7 +31,7 @@ make
 ## On the robot
 
 Communication with the robot sensors and actuators is managed using the embedded [DCM](http://doc.aldebaran.com/2-1/naoqi/sensors/dcm.html) module on the robot.
-To access its features, [mc_naoqi_dcm](https://gite.lirmm.fr/softbankrobotics/mc_naoqi_dcm) needs to be installed and run on the robot.
+To access its features, [mc_naoqi_dcm](https://github.com/jrl-umi3218/mc_naoqi_dcm) needs to be installed and run on the robot.
 
 # Usage
 
