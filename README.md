@@ -4,6 +4,21 @@
 
 ![mc_naoqi](doc/mc_naoqi.png "mc_naoqi interface")
 
+### Author, Contact, BibTeX
+
+Anastasia Bolotnikova (a.bolotnikova[at]softbankrobotics.com)
+
+```
+@unpublished{bolotnikova2021sii,
+  author = {Anastasia Bolotnikova and Pierre Gergondet and Arnaud Tanguy and S{\'e}bastien Courtois and Abderrahmane Kheddar},
+  title = {Task-Space Control Interface for SoftBank Humanoid Robots and its Human-Robot Interaction Applications},
+  pdf = {https://hal.archives-ouvertes.fr/hal-02919367/document},
+  url = {https://hal.archives-ouvertes.fr/hal-02919367},
+  month = {August},
+  year = {2020},
+  note = {submitted to IEEE/SICE International Symposium on System Integration (SII 2021)}
+}
+```
 
 # Installation
 
