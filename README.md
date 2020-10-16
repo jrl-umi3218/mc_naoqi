@@ -4,6 +4,10 @@
 
 ![mc_naoqi](doc/mc_naoqi.png "mc_naoqi interface")
 
+### Video presentation
+
+[![Video presentation](https://img.youtube.com/vi/qzEnCGlT93s/0.jpg)](https://www.youtube.com/watch?v=qzEnCGlT93s "Task-Space Control Interface for SoftBank Robots and its Human-Robot Interaction Applications")
+
 ### Author, Contact, BibTeX
 
 Anastasia Bolotnikova (a.bolotnikova[at]softbankrobotics.com)
@@ -19,10 +23,6 @@ Anastasia Bolotnikova (a.bolotnikova[at]softbankrobotics.com)
   year = {2021}
 }
 ```
-
-### Video presentation
-
-[![Video presentation](https://img.youtube.com/vi/qzEnCGlT93s/0.jpg)](https://www.youtube.com/watch?v=qzEnCGlT93s "Task-Space Control Interface for SoftBank Robots and its Human-Robot Interaction Applications")
 
 # Installation
 
