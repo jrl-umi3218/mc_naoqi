@@ -1,5 +1,7 @@
 #include "MCControlNAOqi.h"
 
+#include <mc_rtc/config.h>
+
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/program_options.hpp>
 
