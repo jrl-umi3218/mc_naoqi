@@ -8,17 +8,12 @@ set(PROJECT_DESCRIPTION mc_naoqi)
 set(PROJECT_URL https://github.com/jrl-umi3218/mc_naoqi)
 set(PROJECT_DEBUG_POSTFIX "_d")
 set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(cmake/base.cmake)
 
 setup_project()
-
-# add_definitions(-std=c++11)
-# libqi fails to compile with -std=c++11,
-# See https://github.com/aldebaran/libqi/issues/1 for more details
-add_definitions(-std=gnu++11)
-
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 find_package(Eigen3 REQUIRED)
