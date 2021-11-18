@@ -20,13 +20,12 @@ setup_project()
 add_definitions(-std=gnu++11)
 
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 find_package(Eigen3 REQUIRED)
 find_package(mc_rtc 1.4.0 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(mc_pepper REQUIRED)
-
-add_required_dependency(naoqi_libqi)
-add_required_dependency(naoqi_libqicore)
+find_package(mc_naoqi_3rd_party_qi)
 add_subdirectory(src)
 
 setup_project_finalize()
