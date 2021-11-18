@@ -415,7 +415,7 @@ void MCControlNAOqi::sensor_thread()
     /* Send sensor readings to mc_rtc controller */
     globalController_.setEncoderValues(qIn_);
     if(useRobotIMU_){
-      globalController_.setSensorAcceleration(accIn_);
+      globalController_.setSensorLinearAcceleration(accIn_);
       globalController_.setSensorOrientation(Eigen::Quaterniond(mc_rbdyn::rpyToMat(rpyIn_)));
       globalController_.setSensorAngularVelocity(rateIn_);
     }
