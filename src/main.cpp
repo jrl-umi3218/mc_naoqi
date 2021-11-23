@@ -10,74 +10,75 @@ using namespace mc_naoqi;
 
 namespace
 {
-  /* Open fully all robot grippers */
-  bool openGrippers(mc_control::MCGlobalController & controller, std::stringstream&)
-  {
-    controller.setGripperOpenPercent(controller.robot().name(), 1);
-    return true;
-  }
+/* Open fully all robot grippers */
+bool openGrippers(mc_control::MCGlobalController & controller, std::stringstream &)
+{
+  controller.setGripperOpenPercent(controller.robot().name(), 1);
+  return true;
+}
 
-  /* Fully close all robot grippers */
-  bool closeGrippers(mc_control::MCGlobalController & controller, std::stringstream&)
-  {
-    controller.setGripperOpenPercent(controller.robot().name(), 0);
-    return true;
-  }
+/* Fully close all robot grippers */
+bool closeGrippers(mc_control::MCGlobalController & controller, std::stringstream &)
+{
+  controller.setGripperOpenPercent(controller.robot().name(), 0);
+  return true;
+}
 
-  /* Set particular gripper opening to a given value (e.g. sg r_gripper 0.5) */
-  bool setGripper(mc_control::MCGlobalController & controller, std::stringstream & args)
+/* Set particular gripper opening to a given value (e.g. sg r_gripper 0.5) */
+bool setGripper(mc_control::MCGlobalController & controller, std::stringstream & args)
+{
+  std::string gripper;
+  std::vector<double> v;
+  double tmp;
+  args >> gripper;
+  while(args.good())
   {
-    std::string gripper; std::vector<double> v; double tmp;
-    args >> gripper;
-    while(args.good())
-    {
-      args >> tmp;
-      v.push_back(tmp);
-    }
-    controller.setGripperTargetQ(controller.robot().name(), gripper, v);
-    return true;
+    args >> tmp;
+    v.push_back(tmp);
   }
+  controller.setGripperTargetQ(controller.robot().name(), gripper, v);
+  return true;
+}
 
-  /* Get current position of a particular joint in robot().mbc() (e.g. gjp KneePitch) */
-  bool getJointPos(mc_control::MCGlobalController & controller, std::stringstream & args)
+/* Get current position of a particular joint in robot().mbc() (e.g. gjp KneePitch) */
+bool getJointPos(mc_control::MCGlobalController & controller, std::stringstream & args)
+{
+  std::string jn;
+  args >> jn;
+  if(controller.robot().hasJoint(jn))
   {
-    std::string jn;
-    args >> jn;
-    if (controller.robot().hasJoint(jn))
-    {
-      mc_rtc::log::info("{}: {}", jn, controller.robot().mbc().q[controller.robot().jointIndexByName(jn)][0]);
-    }
-    else
-    {
-      mc_rtc::log::error("No joint named {} in the robot", jn);
-    }
-    return true;
+    mc_rtc::log::info("{}: {}", jn, controller.robot().mbc().q[controller.robot().jointIndexByName(jn)][0]);
   }
-
-  /* Enable HalfSitPose controller */
-  bool GoToHalfSitPose(mc_control::MCGlobalController & controller, std::stringstream &)
+  else
   {
-    return controller.GoToHalfSitPose_service();
+    mc_rtc::log::error("No joint named {} in the robot", jn);
   }
+  return true;
+}
 
-  /* Change controller */
-  bool ChangeController(mc_control::MCGlobalController & controller, std::stringstream &args)
-  {
-    std::string name;
-    args >> name;
-    return controller.EnableController(name);
-  }
+/* Enable HalfSitPose controller */
+bool GoToHalfSitPose(mc_control::MCGlobalController & controller, std::stringstream &)
+{
+  return controller.GoToHalfSitPose_service();
+}
 
-  /* Map common functions to brief terminal commands */
-  std::map<std::string, std::function<bool(mc_control::MCGlobalController&, std::stringstream&)>> cli_fn = {
-    {"gjp", std::bind(&getJointPos, std::placeholders::_1, std::placeholders::_2) },
+/* Change controller */
+bool ChangeController(mc_control::MCGlobalController & controller, std::stringstream & args)
+{
+  std::string name;
+  args >> name;
+  return controller.EnableController(name);
+}
+
+/* Map common functions to brief terminal commands */
+std::map<std::string, std::function<bool(mc_control::MCGlobalController &, std::stringstream &)>> cli_fn = {
+    {"gjp", std::bind(&getJointPos, std::placeholders::_1, std::placeholders::_2)},
     {"og", std::bind(&openGrippers, std::placeholders::_1, std::placeholders::_2)},
     {"cg", std::bind(&closeGrippers, std::placeholders::_1, std::placeholders::_2)},
     {"sg", std::bind(&setGripper, std::placeholders::_1, std::placeholders::_2)},
     {"hs", std::bind(&GoToHalfSitPose, std::placeholders::_1, std::placeholders::_2)},
-    {"cc", std::bind(&ChangeController, std::placeholders::_1, std::placeholders::_2)}
-  };
-}
+    {"cc", std::bind(&ChangeController, std::placeholders::_1, std::placeholders::_2)}};
+} // namespace
 
 /* Thread that processes commands for the inferface given throught the terminal */
 void input_thread(MCControlNAOqi & controlNAOqi)
@@ -123,7 +124,7 @@ void input_thread(MCControlNAOqi & controlNAOqi)
       std::stringstream ss2;
       ss2 << rem;
       bool ret = cli_fn[token](controlNAOqi.controller(), ss2);
-      if (!ret)
+      if(!ret)
       {
         mc_rtc::log::error("Failed to invoke the previous command");
       }
@@ -136,9 +137,8 @@ void input_thread(MCControlNAOqi & controlNAOqi)
   }
 }
 
-
 /* Main function of the interface */
-int main(int argc, char **argv)
+int main(int argc, char ** argv)
 {
   /* Set command line arguments options */
   /* Usage example: ./src/mc_naoqi -h simulation -f ../etc/mc_rtc_pepper.yaml*/
@@ -146,17 +146,17 @@ int main(int argc, char **argv)
   std::string host;
   unsigned int port;
   po::options_description desc("MCControlNAOqi options");
-  desc.add_options()
-    ("info,i", "display help message")
-    ("host,h", po::value<std::string>(&host)->default_value("nao"), "connection host")
-    ("port,p", po::value<unsigned int>(&port)->default_value(9559), "connection port")
-    ("conf,f", po::value<std::string>(&conf_file)->default_value(mc_rtc::CONF_PATH), "configuration file");
+  desc.add_options()("info,i", "display help message")("host,h", po::value<std::string>(&host)->default_value("nao"),
+                                                       "connection host")(
+      "port,p", po::value<unsigned int>(&port)->default_value(9559), "connection port")(
+      "conf,f", po::value<std::string>(&conf_file)->default_value(mc_rtc::CONF_PATH), "configuration file");
 
   /* Parse command line arguments */
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
-  if(vm.count("info")){
+  if(vm.count("info"))
+  {
     std::cout << desc << std::endl;
     return 1;
   }
@@ -165,15 +165,17 @@ int main(int argc, char **argv)
   /* Create global controller */
   mc_control::MCGlobalController controller(conf_file);
   /* Check that the interface can work with the main controller robot */
-  if(controller.robot().name() != "NAO" && controller.robot().name() != "pepper"){
-    mc_rtc::log::error_and_throw<std::runtime_error>("MCControlNAOqi: This program can only handle nao and pepper at the moment");
+  if(controller.robot().name() != "NAO" && controller.robot().name() != "pepper")
+  {
+    mc_rtc::log::error_and_throw<std::runtime_error>(
+        "MCControlNAOqi: This program can only handle nao and pepper at the moment");
     return 1;
   }
   /* Create MCControlNAOqi interface */
   MCControlNAOqi mc_control_naoqi(controller, host, port);
 
   // Set radom seed for eye blinking
-  srand (uint(time(NULL)));
+  srand(uint(time(NULL)));
 
   /* Start terminal input thread */
   std::thread th(std::bind(&input_thread, std::ref(mc_control_naoqi)));
