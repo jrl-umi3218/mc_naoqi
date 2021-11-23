@@ -1,0 +1,62 @@
+name: CI of mc_naoqi
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+  schedule:
+    # Run on Sunday, Tuesday and Thursday nights
+    - cron: '0 23 * * 0,1,4'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04]
+        build-type: [Debug, RelWithDebInfo]
+        compiler: [gcc, clang]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - name: Install qibuild
+      run: |
+        set -x
+        set -e
+        sudo apt install python3-pip
+        sudo pip install qibuild
+        if [[ "${{ matrix.os }}" == "ubuntu-18.04" ]]
+        then
+          sudo apt install google-gmock
+        else
+          sudo apt install libgmock-dev
+        fi
+    - name: Install dependencies
+      uses: jrl-umi3218/github-actions/install-dependencies@master
+      with:
+        compiler: ${{ matrix.compiler }}
+        build-type: ${{ matrix.build-type }}
+        ubuntu: |
+          apt: libboost-all-dev
+        github: |
+          - path: arntanguy/libqi
+            ref: topic/boost-1.70
+            options: -DQI_WITH_TESTS=OFF
+          - path: jrl-umi3218/pepper_description
+          - path: jrl-umi3218/mc_pepper
+    - name: Install mc_rtc
+      run: |
+        set -x
+        set -e
+        curl -1sLf 'https://dl.cloudsmith.io/public/mc-rtc/head/setup.deb.sh' | sudo -E bash
+        sudo apt-get install -qq libmc-rtc-dev
+    - name: Build and test
+      uses: jrl-umi3218/github-actions/build-cmake-project@master
+      with:
+        compiler: ${{ matrix.compiler }}
+        build-type: ${{ matrix.build-type }}
