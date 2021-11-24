@@ -32,7 +32,7 @@ jobs:
         sudo pip install qibuild
         if [[ "${{ matrix.os }}" == "ubuntu-18.04" ]]
         then
-          sudo apt install google-gmock
+          sudo apt install google-mock
         else
           sudo apt install libgmock-dev
         fi
