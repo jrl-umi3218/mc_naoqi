@@ -36,6 +36,12 @@ jobs:
         else
           sudo apt install libgmock-dev
         fi
+    - name: Install mc_rtc
+      run: |
+        set -x
+        set -e
+        curl -1sLf 'https://dl.cloudsmith.io/public/mc-rtc/head/setup.deb.sh' | sudo -E bash
+        sudo apt-get install -qq libmc-rtc-dev
     - name: Install dependencies
       uses: jrl-umi3218/github-actions/install-dependencies@master
       with:
@@ -49,12 +55,6 @@ jobs:
             options: -DQI_WITH_TESTS=OFF
           - path: jrl-umi3218/pepper_description
           - path: jrl-umi3218/mc_pepper
-    - name: Install mc_rtc
-      run: |
-        set -x
-        set -e
-        curl -1sLf 'https://dl.cloudsmith.io/public/mc-rtc/head/setup.deb.sh' | sudo -E bash
-        sudo apt-get install -qq libmc-rtc-dev
     - name: Build and test
       uses: jrl-umi3218/github-actions/build-cmake-project@master
       with:
