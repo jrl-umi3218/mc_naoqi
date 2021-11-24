@@ -24,25 +24,39 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-    - name: Install qibuild
+    - name: Setup ROS dependencies (bionic)
+      if: matrix.os == 'ubuntu-18.04'
       run: |
-        set -x
         set -e
-        sudo apt install python3-pip
-        sudo pip install qibuild
-        if [[ "${{ matrix.os }}" == "ubuntu-18.04" ]]
-        then
-          sudo apt install google-mock
-        else
-          sudo apt install libgmock-dev
-        fi
+        set -x
+        pushd .
+        export ROS_DISTRO="melodic"
+        sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+        wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+        sudo apt-get update -qq
+        sudo apt-get install -qq ros-${ROS_DISTRO}-ros-base ros-${ROS_DISTRO}-naoqi-libqi ros-${ROS_DISTRO}-naoqi-libqicore
+        . /opt/ros/${ROS_DISTRO}/setup.bash
+        popd
+    - name: Install libqi (noetic)
+      if: matrix.os == 'ubuntu-20.04'
+      uses: jrl-umi3218/github-actions/install-dependencies@master
+      with:
+        compiler: ${{ matrix.compiler }}
+        build-type: ${{ matrix.build-type }}
+        ubuntu: |
+          apt: libgmock-dev libboost-all-dev
+          pip: qibuild
+        github: |
+          - path: arntanguy/libqi
+            ref: topic/boost-1.70
+            options: -DQI_WITH_TESTS=OFF
     - name: Install mc_rtc
       run: |
         set -x
         set -e
         curl -1sLf 'https://dl.cloudsmith.io/public/mc-rtc/head/setup.deb.sh' | sudo -E bash
         sudo apt-get install -qq libmc-rtc-dev
-    - name: Install dependencies
+    - name: Install dependencies (common)
       uses: jrl-umi3218/github-actions/install-dependencies@master
       with:
         compiler: ${{ matrix.compiler }}
@@ -50,9 +64,6 @@ jobs:
         ubuntu: |
           apt: libboost-all-dev
         github: |
-          - path: arntanguy/libqi
-            ref: topic/boost-1.70
-            options: -DQI_WITH_TESTS=OFF
           - path: jrl-umi3218/pepper_description
           - path: jrl-umi3218/mc_pepper
     - name: Build and test
