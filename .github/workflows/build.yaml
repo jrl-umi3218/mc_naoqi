@@ -68,7 +68,6 @@ jobs:
           pip: qibuild
         github: |
           - path: arntanguy/libqi
-            ref: topic/boost-1.70
             options: -DQI_WITH_TESTS=OFF
     - name: Build and test
       if: matrix.os == 'ubuntu-20.04'
