@@ -28,23 +28,43 @@ Anastasia Bolotnikova (a.bolotnikova[at]softbankrobotics.com)
 
 ## On the control computer
 
-Instead of using NAOqi SDK, the communication with naoqi OS is based on [naoqi_libqi](http://wiki.ros.org/naoqi_libqi) and [naoqi_libqicore](http://wiki.ros.org/naoqi_libqicore) ros packages:
+The communication with naoqi OS is based on [libqi](https://github.com/aldebaran/libqi).
+
+### Dependencies
+
+#### Ubuntu Bionic (18.04)
+
+On ubuntu bionic, libqi may be installed from ROS packages [naoqi_libqi](http://wiki.ros.org/naoqi_libqi)
 
 ```sh
 sudo apt-get install ros-melodic-naoqi-libqi
-sudo apt-get install ros-melodic-naoqi-libqicore
 ```
 
-Then compile `mc_naoqi`.
+#### Ubuntu Focal (20.04)
+
+Unfortunately, libqi is not officially supported on libqi, aue to changes in Boost 1.70 networking API, the official repository does not compile.
+We provide a patched version maintained at https://github.com/arntanguy/libqi
+
+```sh
+git clone --recursive https://github.com/arntanguy/libqi.git
+cd libqi
+mkdir build && cd build
+cmake -DQI_WITH_TESTS=OFF ..
+make -j8
+sudo make install
+```
+
+### Installing mc_naoqi
+
+After installing the above dependencies, compile and install `mc_naoqi`.
 
 ``` bash
-git clone https://github.com/jrl-umi3218/mc_naoqi.git
+git clone --recursive https://github.com/jrl-umi3218/mc_naoqi.git
 cd mc_naoqi
-git submodule update --init
-mkdir build
-cd build
-cmake ..
-make
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+make -j8
+sudo make install
 ```
 
 ## On the robot
@@ -57,9 +77,10 @@ To access its features, [mc_naoqi_dcm](https://github.com/jrl-umi3218/mc_naoqi_d
 To use the interface and connect to a real robot run
 
 ```bash
-# while in 'build' folder
-./src/mc_naoqi -h <robot_hostname> -p <robot_port> -f <mc_rtc_configuration_file.conf>
+mc_naoqi -h <robot_hostname> -p <robot_port> -f <mc_rtc_configuration_file.conf>
 ```
+
+Where <mc_rtc_configuration_file.yaml> is based on `<INSTALL_PREFIX>/etc/mc_naoqi/<robot>.yaml` (e.g `/usr/local/etc/mc_naoqi/pepper.yaml`).
 
 If you wish to run the simulation only use `simulation` as a `<robot_hostname>`
 

@@ -20,7 +20,12 @@ find_package(Eigen3 REQUIRED)
 find_package(mc_rtc 1.4.0 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS program_options thread)
 find_package(mc_pepper REQUIRED)
-find_package(mc_naoqi_3rd_party_qi)
+find_package(mc_naoqi_3rd_party_qi REQUIRED)
 add_subdirectory(src)
+
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/etc/"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/etc/mc_naoqi"
+        FILES_MATCHING
+        PATTERN "*.yaml")
 
 setup_project_finalize()

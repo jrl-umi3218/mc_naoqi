@@ -141,26 +141,29 @@ void input_thread(MCControlNAOqi & controlNAOqi)
 int main(int argc, char ** argv)
 {
   /* Set command line arguments options */
-  /* Usage example: ./src/mc_naoqi -h simulation -f ../etc/mc_rtc_pepper.yaml*/
-  std::string conf_file = mc_rtc::CONF_PATH;
+  /* Usage example: mc_naoqi -h simulation -f etc/mc_rtc_pepper.yaml*/
+  std::string conf_file;
   std::string host;
   unsigned int port;
-  po::options_description desc("MCControlNAOqi options");
-  desc.add_options()("info,i", "display help message")("host,h", po::value<std::string>(&host)->default_value("nao"),
-                                                       "connection host")(
-      "port,p", po::value<unsigned int>(&port)->default_value(9559), "connection port")(
-      "conf,f", po::value<std::string>(&conf_file)->default_value(mc_rtc::CONF_PATH), "configuration file");
+  po::options_description desc("mc_naoqi options");
+  // clang-format off
+  desc.add_options()
+  ("help", "display help message")
+  ("host,h", po::value<std::string>(&host)->default_value("nao"), "connection host")
+  ("port,p", po::value<unsigned int>(&port)->default_value(9559), "connection port")
+  ("conf,f", po::value<std::string>(&conf_file)->default_value(mc_rtc::CONF_PATH), "configuration file");
+  // clang-format on
 
   /* Parse command line arguments */
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
-  if(vm.count("info"))
+  if(vm.count("help"))
   {
     std::cout << desc << std::endl;
     return 1;
   }
-  mc_rtc::log::info("MCControlNAOqi - Using conf: {}", conf_file);
+  mc_rtc::log::info("mc_naoqi - Reading additional configuration from: {}", conf_file);
 
   /* Create global controller */
   mc_control::MCGlobalController controller(conf_file);
@@ -168,7 +171,7 @@ int main(int argc, char ** argv)
   if(controller.robot().name() != "NAO" && controller.robot().name() != "pepper")
   {
     mc_rtc::log::error_and_throw<std::runtime_error>(
-        "MCControlNAOqi: This program can only handle nao and pepper at the moment");
+        "mc_naoqi: This program can only handle nao and pepper at the moment");
     return 1;
   }
   /* Create MCControlNAOqi interface */

@@ -14,3 +14,8 @@ target_link_libraries(mc_naoqi Boost::thread)
 target_link_libraries(mc_naoqi mc_rtc::mc_control)
 target_link_libraries(mc_naoqi mc_pepper::devices)
 target_link_libraries(mc_naoqi qi::qi)
+
+install(TARGETS mc_naoqi
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib)
