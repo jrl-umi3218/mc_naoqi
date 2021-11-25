@@ -24,32 +24,6 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-    - name: Setup ROS dependencies (bionic)
-      if: matrix.os == 'ubuntu-18.04'
-      run: |
-        set -e
-        set -x
-        pushd .
-        export ROS_DISTRO="melodic"
-        sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-        wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
-        sudo apt-get update -qq
-        sudo apt-get install -qq ros-${ROS_DISTRO}-ros-base ros-${ROS_DISTRO}-naoqi-libqi ros-${ROS_DISTRO}-naoqi-libqicore
-        . /opt/ros/${ROS_DISTRO}/setup.bash
-        popd
-    - name: Install libqi (noetic)
-      if: matrix.os == 'ubuntu-20.04'
-      uses: jrl-umi3218/github-actions/install-dependencies@master
-      with:
-        compiler: ${{ matrix.compiler }}
-        build-type: ${{ matrix.build-type }}
-        ubuntu: |
-          apt: libgmock-dev libboost-all-dev
-          pip: qibuild
-        github: |
-          - path: arntanguy/libqi
-            ref: topic/boost-1.70
-            options: -DQI_WITH_TESTS=OFF
     - name: Install mc_rtc
       run: |
         set -x
@@ -66,7 +40,38 @@ jobs:
         github: |
           - path: jrl-umi3218/pepper_description
           - path: jrl-umi3218/mc_pepper
+    - name: Build and Install with ROS (bionic)
+      if: matrix.os == 'ubuntu-18.04'
+      run: |
+        set -e
+        set -x
+        pushd .
+        export ROS_DISTRO="melodic"
+        sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+        wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+        sudo apt-get update -qq
+        sudo apt-get install -qq ros-${ROS_DISTRO}-ros-base ros-${ROS_DISTRO}-naoqi-libqi ros-${ROS_DISTRO}-naoqi-libqicore libboost-all-dev
+        . /opt/ros/${ROS_DISTRO}/setup.bash
+        popd
+        pushd .
+        mkdir build && cd build
+        cmake ../ && make -j2 && sudo make install || exit 1
+        popd
+    - name: Install libqi (noetic)
+      if: matrix.os == 'ubuntu-20.04'
+      uses: jrl-umi3218/github-actions/install-dependencies@master
+      with:
+        compiler: ${{ matrix.compiler }}
+        build-type: ${{ matrix.build-type }}
+        ubuntu: |
+          apt: libgmock-dev libboost-all-dev libboost-all-dev
+          pip: qibuild
+        github: |
+          - path: arntanguy/libqi
+            ref: topic/boost-1.70
+            options: -DQI_WITH_TESTS=OFF
     - name: Build and test
+      if: matrix.os == 'ubuntu-20.04'
       uses: jrl-umi3218/github-actions/build-cmake-project@master
       with:
         compiler: ${{ matrix.compiler }}
