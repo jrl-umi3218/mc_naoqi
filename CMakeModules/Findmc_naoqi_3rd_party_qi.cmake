@@ -12,7 +12,7 @@
 if(NOT TARGET qi::qi)
   # Search using pkgconfig (e.g installed with ros-melodic-naoqi-libqi ros-melodic-naoqi-libqicore)
   include(FindPkgConfig)
-  pkg_search_module(LIBQI naoqi_libqi naoqi_libqicore)
+  pkg_search_module(LIBQI naoqi_libqi)
   if(LIBQI_FOUND)
     foreach(LIB ${LIBQI_LIBRARIES})
       find_library(${LIB}_FULL_PATH NAME ${LIB} HINTS ${LIBQI_LIBRARY_DIRS})
