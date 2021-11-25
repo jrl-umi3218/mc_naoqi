@@ -1,4 +1,6 @@
-# **mc_naoqi**
+# mc_naoqi
+
+[![CI of mc_naoqi](https://github.com/jrl-umi3218/mc_naoqi/actions/workflows/build.yaml/badge.svg)](https://github.com/jrl-umi3218/mc_naoqi/actions/workflows/build.yaml)
 
 ### Interface to handle communication between [`mc_rtc`](https://jrl-umi3218.github.io/mc_rtc/) and SoftBank humanoid robots running NAOqi OS
 
@@ -85,8 +87,7 @@ Where <mc_rtc_configuration_file.yaml> is based on `<INSTALL_PREFIX>/etc/mc_naoq
 If you wish to run the simulation only use `simulation` as a `<robot_hostname>`
 
 ```bash
-# while in 'build' folder
-./src/mc_naoqi -h simulation -f <mc_rtc_configuration_file.conf>
+mc_naoqi -h simulation -f <mc_rtc_configuration_file.conf>
 ```
 
 ## CLI Commands
