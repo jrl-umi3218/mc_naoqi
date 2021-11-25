@@ -5,7 +5,6 @@
 #include <qi/session.hpp>
 #include <thread>
 
-
 namespace mc_naoqi
 {
 /**
@@ -14,16 +13,19 @@ namespace mc_naoqi
 struct MCControlNAOqi
 {
   /**
-  * @brief Interface constructor and destructor
-  */
-  MCControlNAOqi(mc_control::MCGlobalController& controller, const std::string& host, const unsigned int port);
+   * @brief Interface constructor and destructor
+   */
+  MCControlNAOqi(mc_control::MCGlobalController & controller, const std::string & host, const unsigned int port);
 
   virtual ~MCControlNAOqi();
 
   /**
    * @brief Is the interface running
    */
-  bool running() { return interfaceRunning_; }
+  bool running()
+  {
+    return interfaceRunning_;
+  }
 
   /**
    * @brief Start or stop the experiment
@@ -33,7 +35,10 @@ struct MCControlNAOqi
    *  false: Stop controller
    */
   void startOrStop(const bool state);
-  bool controllerStartedState() { return controllerStartedState_; };
+  bool controllerStartedState()
+  {
+    return controllerStartedState_;
+  };
 
   /**
    * @brief Stop the experimnet
@@ -63,10 +68,12 @@ struct MCControlNAOqi
   /**
    * @brief Return a reference to the global mc_rtc controller
    */
-  mc_control::MCGlobalController& controller() { return globalController_; }
+  mc_control::MCGlobalController & controller()
+  {
+    return globalController_;
+  }
 
- private:
-
+private:
   /*! Controller state (started or stopped) */
   bool controllerStartedState_ = false;
   std::string controllerButtonText_ = "Start/Stop controller";
@@ -82,7 +89,7 @@ struct MCControlNAOqi
   void sensor_thread();
 
   /*! Global mc_rtc controller */
-  mc_control::MCGlobalController& globalController_;
+  mc_control::MCGlobalController & globalController_;
 
   /*! Controller timestep expressed in ms */
   unsigned int timestep_;
@@ -182,4 +189,4 @@ struct MCControlNAOqi
   bool displayBlockTimerActive_ = false;
 };
 
-} /* mc_naoqi */
+} // namespace mc_naoqi
