@@ -293,14 +293,12 @@ void MCControlNAOqi::control_thread()
       /** CONTROL loop **/
       if(globalController_.run())
       {
-        /* Get latest QP result */
-        const mc_solver::QPResultMsg & res = globalController_.send(0);
-
         /* Prepare to send desired joint angles as actuator commands */
         for(size_t i = 0; i < globalController_.robot().refJointOrder().size(); ++i)
         {
-          const auto & jname = globalController_.robot().refJointOrder()[i];
-          angles[i] = static_cast<float>(res.robots_state[0].q.at(jname)[0]);
+          auto & robot = globalController_.robot();
+          const auto & q = robot.mbc().q;
+          angles[i] = static_cast<float>(q[static_cast<size_t>(robot.jointIndexInMBC(i))][0]);
         }
 
         /* Send actuator commands to the robot */
