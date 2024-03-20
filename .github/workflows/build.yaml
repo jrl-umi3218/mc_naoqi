@@ -37,6 +37,7 @@ jobs:
           pip: qibuild
         github: |
           - path: jrl-umi3218/pepper_description
+            options: -DDISABLE_ROS=ON
           - path: jrl-umi3218/mc_pepper
           - path: arntanguy/libqi
             options: -DQI_WITH_TESTS=OFF
