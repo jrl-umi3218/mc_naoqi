@@ -427,12 +427,29 @@ void MCControlNAOqi::sensor_thread()
     std::map<std::string, sva::ForceVecd> wrenches;
     if(globalController_.robot().name() == "nao")
     {
-      /* Feet force sensors */
-      double LFsrTOTAL = sensors_[sensorOrderMap_["LF_FSR_TotalWeight"]];
-      double RFsrTOTAL = sensors_[sensorOrderMap_["RF_FSR_TotalWeight"]];
+      /* Feet force sensors measurements converted in N*/
+      double LFsrTOTAL = sensors_[sensorOrderMap_["LFootTotalWeight"]] * 10;
+      double RFsrTOTAL = sensors_[sensorOrderMap_["RFootTotalWeight"]] * 10;
+      double LFsrFL = sensors_[sensorOrderMap_["LFootFrontLeft"]] * 10;
+      double LFsrFR = sensors_[sensorOrderMap_["LFootFrontRight"]] * 10;
+      double LFsrRR = sensors_[sensorOrderMap_["LFootRearRight"]] * 10;
+      double LFsrRL = sensors_[sensorOrderMap_["LFootRearLeft"]] * 10;
+
+      double RFsrFL = sensors_[sensorOrderMap_["RFootFrontLeft"]] * 10;
+      double RFsrFR = sensors_[sensorOrderMap_["RFootFrontRight"]] * 10;
+      double RFsrRR = sensors_[sensorOrderMap_["RFootRearRight"]] * 10;
+      double RFsrRL = sensors_[sensorOrderMap_["RFootRearLeft"]] * 10;
 
       wrenches["LF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrTOTAL});
       wrenches["RF_TOTAL_WEIGHT"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrTOTAL});
+      wrenches["LFsrFL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrFL});
+      wrenches["LFsrFR"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrFR});
+      wrenches["LFsrRR"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrRR});
+      wrenches["LFsrRL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, LFsrRL});
+      wrenches["RFsrFL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrFL});
+      wrenches["RFsrFR"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrFR});
+      wrenches["RFsrRR"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrRR});
+      wrenches["RFsrRL"] = sva::ForceVecd({0., 0., 0.}, {0, 0, RFsrRL});
       globalController_.setWrenches(wrenches);
     }
     /* Devices specific to Pepper robot */
